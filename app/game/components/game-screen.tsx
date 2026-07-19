@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { Mic, MicOff, PhoneOff, RefreshCw, ShieldAlert, Wifi } from "lucide-react";
-import { useState } from "react";
+import { LivingOrb } from "./living-orb";
 import { useInterrogationClient } from "../hooks/use-interrogation-client";
 
 interface GameScreenProps {
@@ -22,18 +22,6 @@ export function GameScreen({
     crime, timerStarted, onTimerStart, onGoodArgument, onIncreaseImpatience, onWin, onLose
   });
 
-  const getGlowColor = () => {
-    if (suspicion >= 80) return "rgba(239,68,68,0.7)"; // Red
-    if (suspicion >= 50) return "rgba(245,158,11,0.7)"; // Amber
-    return "rgba(168,85,247,0.7)"; // Purple
-  };
-
-  const getOrbGradients = () => {
-    if (suspicion >= 80) return "from-red-650 via-orange-600 to-rose-700";
-    if (suspicion >= 50) return "from-amber-500 via-orange-500 to-yellow-600";
-    return "from-cyan-500 via-violet-600 to-fuchsia-600";
-  };
-
   const getStatusText = () => {
     if (connectionError) return "TRANSMISSION INTERRUPTED";
     if (isConnecting) return "SYNCHRONIZING BIO-UPLINK...";
@@ -43,14 +31,27 @@ export function GameScreen({
     return "LISTENING TO ALIBI...";
   };
 
+  const orbState = connectionError
+    ? "error"
+    : isConnecting
+      ? "connecting"
+      : connected && isAiSpeaking
+        ? "talking"
+        : connected && muted
+          ? "muted"
+          : connected
+            ? "listening"
+            : "offline";
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative flex h-screen w-screen flex-col justify-between p-8 bg-black text-zinc-400 font-mono overflow-hidden select-none">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative flex h-screen w-screen flex-col justify-between bg-black p-5 font-mono text-zinc-400 select-none overflow-hidden sm:p-8">
       {/* Background Grid details */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#07070a_1px,transparent_1px),linear-gradient(to_bottom,#07070a_1px,transparent_1px)] bg-[size:5rem_5rem] opacity-30 pointer-events-none z-0" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.85)_95%)] pointer-events-none z-0" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(to_right,rgba(20,184,166,0.055)_1px,transparent_1px),linear-gradient(to_bottom,rgba(217,70,239,0.045)_1px,transparent_1px)] bg-[size:5rem_5rem] opacity-75" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0)_0%,rgba(8,7,22,0.18)_36%,rgba(0,0,0,0.92)_96%)]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[conic-gradient(from_160deg,rgba(34,211,238,0.14),rgba(217,70,239,0.12),rgba(251,191,36,0.1),rgba(34,211,238,0.14))] blur-3xl" />
 
       {/* Top Header Status Bar */}
-      <div className="relative z-10 w-full flex items-center justify-between text-[10px] text-zinc-650 border-b border-zinc-900/60 pb-3">
+      <div className="relative z-10 flex w-full items-center justify-between border-b border-zinc-800/70 pb-3 text-[10px] text-zinc-500">
         <div className="flex items-center gap-2">
           <Wifi className={cn("size-3.5", connected ? "text-cyan-400 animate-pulse" : "text-zinc-700")} />
           <span className={cn("font-bold tracking-widest", connected ? "text-cyan-400/80" : "text-zinc-700")}>
@@ -59,101 +60,33 @@ export function GameScreen({
         </div>
         <div className="flex items-center gap-4">
           <span className={cn("font-bold transition-all", suspicion >= 80 ? "text-red-500" : suspicion >= 50 ? "text-amber-500" : "text-cyan-400/80")}>THREAT INDEX: {suspicion}%</span>
-          <button onClick={onChangeKey} className="hover:text-red-400 font-bold uppercase transition-colors cursor-pointer">
+          <button onClick={onChangeKey} className="cursor-pointer font-bold uppercase transition-colors hover:text-red-400">
             Reset Key
           </button>
         </div>
       </div>
 
-      {/* Center Hextech Singularity Core */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center" style={{ perspective: "1000px" }}>
-        <div className="relative flex items-center justify-center size-96">
-          {/* Nebula Aura Backdrops */}
-          <motion.div
-            animate={{
-              scale: isConnecting ? [1, 1.05, 1] : connected && isAiSpeaking ? [1, 1.2 + volume * 1.5, 1] : [1, 1.02, 1],
-              opacity: connected ? [0.12, 0.3, 0.12] : [0.03, 0.08, 0.03],
-              borderRadius: ["40% 60% 50% 50% / 50% 40% 60% 50%", "50% 50% 40% 60% / 40% 60% 50% 50%", "40% 60% 50% 50% / 50% 40% 60% 50%"]
-            }}
-            transition={{ duration: connected && isAiSpeaking ? 0.35 : 6, repeat: Infinity, ease: "easeInOut" }}
-            className={cn("absolute size-80 bg-gradient-to-tr blur-3xl transition-all duration-700", getOrbGradients())}
-          />
-          <motion.div
-            animate={{
-              scale: isConnecting ? [1, 1.08, 1] : connected && isAiSpeaking ? [1, 1.15 + volume * 1.1, 1] : [1, 1.01, 1],
-              borderRadius: ["50% 50% 40% 60% / 40% 60% 50% 50%", "40% 60% 50% 50% / 50% 40% 60% 50%", "50% 50% 40% 60% / 40% 60% 50% 50%"]
-            }}
-            transition={{ duration: connected && isAiSpeaking ? 0.45 : 4, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-            className={cn("absolute size-64 bg-gradient-to-tr blur-2xl opacity-60 transition-all duration-700", getOrbGradients())}
-          />
+      {/* Center Living Orb */}
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center py-2 sm:py-4">
+        <LivingOrb state={orbState} volume={volume} suspicion={suspicion} />
 
-          {/* 3D Tilted Rotating Rings */}
-          <motion.div
-            animate={{ rotateX: 65, rotateY: 20, rotateZ: [0, 360] }}
-            transition={{ rotateZ: { duration: 15, repeat: Infinity, ease: "linear" } }}
-            className="absolute size-72 rounded-full border border-cyan-400/30 blur-[0.6px] shadow-[0_0_15px_rgba(34,211,238,0.1)] pointer-events-none"
-            style={{ transformStyle: "preserve-3d" }}
-          />
-          <motion.div
-            animate={{ rotateX: -45, rotateY: -35, rotateZ: [360, 0] }}
-            transition={{ rotateZ: { duration: 18, repeat: Infinity, ease: "linear" } }}
-            className="absolute size-64 rounded-full border border-dashed border-fuchsia-500/25 blur-[0.5px] pointer-events-none"
-            style={{ transformStyle: "preserve-3d" }}
-          />
-
-          {/* Tesseract projection wireframe */}
-          <svg viewBox="0 0 100 100" className="absolute size-48 text-violet-400/20 stroke-current stroke-[1.2] fill-none pointer-events-none z-10">
-            <motion.rect x="15" y="15" width="70" height="70" rx="4" animate={{ rotate: 360 }} transition={{ duration: 35, repeat: Infinity, ease: "linear" }} style={{ transformOrigin: "50px 50px" }} />
-            <motion.rect x="32" y="32" width="36" height="36" rx="2" animate={{ rotate: -360 }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }} style={{ transformOrigin: "50px 50px" }} />
-            <line x1="15" y1="15" x2="32" y2="32" />
-            <line x1="85" y1="15" x2="68" y2="32" />
-            <line x1="15" y1="85" x2="32" y2="68" />
-            <line x1="85" y1="85" x2="68" y2="68" />
-          </svg>
-
-          {/* Black Hole Singularity Core */}
-          <motion.div
-            animate={{
-              x: connected ? [-3, 3, -1, 1, -3] : 0,
-              y: connected ? [-2, 2, 1, -1, -2] : 0,
-              scale: isConnecting ? 0.9 : connected && isAiSpeaking ? 1 + volume * 0.7 : connected && !muted ? [1, 1.04, 1] : 0.9
-            }}
-            transition={{
-              x: { duration: 8, repeat: Infinity, ease: "linear" },
-              y: { duration: 7, repeat: Infinity, ease: "linear" },
-              scale: { duration: connected && isAiSpeaking ? 0.22 : 3, repeat: Infinity, ease: "easeInOut" }
-            }}
-            className="absolute size-36 rounded-full bg-black border border-zinc-900/80 z-20 flex items-center justify-center transition-all duration-700 shadow-inner"
-            style={{
-              boxShadow: `0 0 35px ${getGlowColor()}, inset 0 0 20px rgba(0, 0, 0, 0.95)`
-            }}
-          >
-            {/* Swirling core singularity vortex */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              className={cn("size-24 rounded-full bg-gradient-to-tr opacity-25 blur-md", getOrbGradients())}
-            />
-          </motion.div>
-        </div>
-
-        {/* Status Text Under Singularity */}
-        <div className="text-center mt-6 space-y-2">
-          <p className={cn("text-xs font-bold uppercase tracking-[0.2em] transition-all", isConnecting ? "text-amber-400 animate-pulse" : connectionError ? "text-red-500 animate-pulse" : connected && isAiSpeaking ? "text-violet-400" : connected ? "text-cyan-400 animate-pulse" : "text-zinc-650")}>
+        {/* Status Text Under Orb */}
+        <div className="-mt-2 space-y-2 text-center sm:mt-0">
+          <p className={cn("text-xs font-bold uppercase tracking-[0.24em] transition-all", isConnecting ? "text-amber-300 animate-pulse" : connectionError ? "text-red-400 animate-pulse" : connected && isAiSpeaking ? "text-fuchsia-300" : connected ? "text-cyan-300 animate-pulse" : "text-zinc-500")}>
             {getStatusText()}
           </p>
-          <p className="text-[10px] text-zinc-600 max-w-xs font-sans tracking-wide leading-relaxed select-none">
-            {connectionError ? "Google Live connection aborted." : connected ? "Microphone active. Speak your alibi clearly to defend yourself." : "Establish transmission connection to synchronize the uplink."}
+          <p className="max-w-xs text-[10px] font-sans leading-relaxed tracking-wide text-zinc-500 select-none">
+            {connectionError ? "Google Live connection stalled. Retry the uplink or reset the API key." : connected ? "Microphone active. Speak your alibi clearly to defend yourself." : "Establish transmission connection to synchronize the uplink."}
           </p>
         </div>
       </div>
 
       {/* Floating Pill Action Dock */}
-      <div className="relative z-10 w-full flex flex-col items-center gap-4 border-t border-zinc-900/60 pt-4">
+      <div className="relative z-10 flex w-full flex-col items-center gap-4 border-t border-zinc-800/70 pt-4">
         <AnimatePresence>
           {connectionError && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex flex-col items-center gap-1.5 text-center">
-              <span className="text-[9px] text-red-550 max-w-md leading-normal select-text flex items-center gap-1.5"><ShieldAlert className="size-3.5" />{connectionError}</span>
+              <span className="flex max-w-md items-center gap-1.5 text-[9px] leading-normal text-red-400 select-text"><ShieldAlert className="size-3.5" />{connectionError}</span>
               <button onClick={triggerRetry} className="flex items-center gap-1 text-[10px] text-red-400 font-bold uppercase underline hover:text-red-300 cursor-pointer">
                 <RefreshCw className="size-3" />
                 <span>Retry Sat-Link</span>
@@ -180,7 +113,7 @@ export function GameScreen({
             size="icon"
             disabled={isConnecting}
             onClick={connected ? disconnect : connect}
-            className={cn("size-12 rounded-full shadow-lg transition-all cursor-pointer", connected ? "bg-red-650 hover:bg-red-750" : "bg-cyan-650 hover:bg-cyan-750 text-black")}
+            className={cn("size-12 cursor-pointer rounded-full shadow-lg transition-all", connected ? "bg-red-600 hover:bg-red-700" : "bg-cyan-500 text-black hover:bg-cyan-400")}
           >
             {isConnecting ? (
               <RefreshCw className="size-5 animate-spin text-black" />
