@@ -10,8 +10,9 @@ import { useState } from "react";
 export function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => void }) {
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedKey = apiKey.trim();
 
@@ -20,8 +21,24 @@ export function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => 
       return;
     }
 
+    setIsValidating(true);
     setError("");
-    onApiKeySet(trimmedKey);
+
+    try {
+      // Standard models endpoint check
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${trimmedKey}`);
+      if (res.ok) {
+        onApiKeySet(trimmedKey);
+      } else {
+        const data = await res.json().catch(() => null);
+        const serverMessage = data?.error?.message || "Invalid API key";
+        setError(`Verification failed: ${serverMessage}`);
+      }
+    } catch (err) {
+      setError("Network error: Failed to reach Google API servers. Please check your internet connection.");
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   return (
@@ -56,11 +73,12 @@ export function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => 
               id="api-key"
               type="password"
               value={apiKey}
+              disabled={isValidating}
               onChange={(e) => {
                 setApiKey(e.target.value);
                 setError("");
               }}
-              placeholder="Enter your API key..."
+              placeholder={isValidating ? "Validating..." : "Enter your API key..."}
               className={cn(
                 "w-full bg-black/40 border-zinc-800 text-white placeholder:text-zinc-700",
                 error && "border-red-500/50 focus:border-red-500"
@@ -84,9 +102,17 @@ export function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => 
 
           <Button
             type="submit"
-            className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold h-12"
+            disabled={isValidating}
+            className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold h-12 flex items-center justify-center gap-2"
           >
-            Connect to Interrogation Room
+            {isValidating ? (
+              <>
+                <div className="size-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                <span>Verifying Key...</span>
+              </>
+            ) : (
+              "Connect to Interrogation Room"
+            )}
           </Button>
         </form>
       </motion.div>

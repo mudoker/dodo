@@ -6,21 +6,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatMessage } from "../types";
 
 export function useInterrogationClient({
-  crime,
-  timerStarted,
-  onTimerStart,
-  onGoodArgument,
-  onIncreaseImpatience,
-  onWin,
-  onLose,
+  crime, timerStarted, onTimerStart, onGoodArgument, onIncreaseImpatience, onWin, onLose
 }: {
-  crime: string;
-  timerStarted: boolean;
-  onTimerStart: () => void;
-  onGoodArgument: () => void;
-  onIncreaseImpatience: (amount: number) => void;
-  onWin: () => void;
-  onLose: () => void;
+  crime: string; timerStarted: boolean; onTimerStart: () => void; onGoodArgument: () => void;
+  onIncreaseImpatience: (amount: number) => void; onWin: () => void; onLose: () => void;
 }) {
   const { client, connected, connect, disconnect, volume } = useLiveAPIContext();
   const [audioRecorder] = useState(() => new AudioRecorder());
@@ -40,62 +29,62 @@ export function useInterrogationClient({
 
   useEffect(() => { transcriptRef.current = currentTranscript; }, [currentTranscript]);
 
+  // Connection timeout check
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    if (isConnecting) {
+      timeoutId = setTimeout(() => {
+        if (!connected) {
+          console.warn("[useInterrogationClient] Connection attempt timed out.");
+          disconnect();
+          setConnectionError("Connection timed out. Google AI Studio server is busy or the API key is unauthorized.");
+          setIsConnecting(false);
+        }
+      }, 7000); // 7 seconds timeout
+    }
+    return () => { if (timeoutId) clearTimeout(timeoutId); };
+  }, [isConnecting, connected, disconnect]);
+
   useEffect(() => {
     if (!client) return;
-
-    const handleContent = (content: unknown) => {
-      const contentObj = content as { modelTurn?: { parts?: Array<{ text?: string }> } };
-      const text = contentObj?.modelTurn?.parts?.filter((part) => typeof part.text === "string").map((part) => part.text).join("") || "";
+    const handleContent = (content: any) => {
+      const text = content?.modelTurn?.parts?.filter((p: any) => typeof p.text === "string").map((p: any) => p.text).join("") || "";
       if (text) {
         setCurrentTranscript((prev) => prev + text);
         setIsAiSpeaking(true);
-
         setChatHistory((prev) => {
           const lastMsg = prev[prev.length - 1];
-          if (lastMsg && lastMsg.sender === "detective" && lastMsg.isLive) {
+          if (lastMsg?.sender === "detective" && lastMsg.isLive) {
             return [...prev.slice(0, -1), { ...lastMsg, text: lastMsg.text + text }];
           }
-          
           let base = prev;
           if (userSpokeRef.current) {
             userSpokeRef.current = false;
-            const lastNonVoice = prev[prev.length - 1];
-            if (!lastNonVoice || lastNonVoice.sender !== "user") {
+            const last = prev[prev.length - 1];
+            if (!last || last.sender !== "user") {
               base = [...prev, { id: "voice-" + Math.random().toString(), sender: "user", text: "🎤 [Defended via Voice Chat]", timestamp: new Date(), isVoice: true }];
             }
           }
-          return [...base, { id: Math.random().toString(), sender: "detective", text: text, timestamp: new Date(), isLive: true }];
+          return [...base, { id: Math.random().toString(), sender: "detective", text, timestamp: new Date(), isLive: true }];
         });
       }
     };
 
     const handleTurnComplete = () => {
       setIsAiSpeaking(false);
-      if (!firstTurnCompleteRef.current) {
-        firstTurnCompleteRef.current = true;
-        onTimerStart();
-      }
+      if (!firstTurnCompleteRef.current) { firstTurnCompleteRef.current = true; onTimerStart(); }
+      const trans = transcriptRef.current.toLowerCase();
+      if (["free to go", "wrong person", "case dismissed", "let you go", "dropping the charges"].some(p => trans.includes(p))) { onWin(); return; }
+      if (["going down", "going to jail", "lock you up", "guilty as charged", "sending you to prison"].some(p => trans.includes(p))) { onLose(); return; }
 
-      const transcript = transcriptRef.current.toLowerCase();
-      if (["free to go", "wrong person", "case dismissed", "let you go", "dropping the charges", "my mistake"].some(phrase => transcript.includes(phrase))) {
-        onWin();
-        return;
-      }
-      if (["going down", "going to jail", "lock you up", "guilty as charged", "worthless piece of shit", "sending you to prison"].some(phrase => transcript.includes(phrase))) {
-        onLose();
-        return;
-      }
-
-      const goodArgumentPhrases = [
-        "oh please", "that's pathetic", "nice try", "you think that's clever", "how adorable",
-        "spare me", "weak argument", "feeble attempt", "dammit", "wait", "doesn't add up", "maybe",
-        "perhaps", "i suppose", "alright", "fine", "whatever", "i guess", "you got lucky", "this time"
-      ];
-      const isGood = goodArgumentPhrases.some(phrase => transcript.includes(phrase));
-      const isDismissive = ["pathetic", "weak", "feeble", "stupid", "beneath", "not smart enough", "not clever", "adorable", "spare me", "bullshit"].some(phrase => transcript.includes(phrase));
+      const isGood = [
+        "oh please", "that's pathetic", "nice try", "you think", "how adorable", "spare me", "weak",
+        "feeble", "dammit", "wait", "doesn't add up", "maybe", "perhaps", "i suppose", "alright",
+        "fine", "whatever", "i guess", "you got lucky", "this time", "stupid", "beneath", "bullshit"
+      ].some(p => trans.includes(p));
 
       if (timerStarted) {
-        if (isGood || isDismissive) {
+        if (isGood) {
           setShowInnocenceBonus(true);
           onGoodArgument();
           setTimeout(() => setShowInnocenceBonus(false), 3000);
@@ -103,21 +92,19 @@ export function useInterrogationClient({
           onIncreaseImpatience(6);
         }
       }
-
       setChatHistory((prev) => {
         const lastMsg = prev[prev.length - 1];
-        return (lastMsg && lastMsg.sender === "detective" && lastMsg.isLive) ? [...prev.slice(0, -1), { ...lastMsg, isLive: false }] : prev;
+        return (lastMsg?.sender === "detective" && lastMsg.isLive) ? [...prev.slice(0, -1), { ...lastMsg, isLive: false }] : prev;
       });
       setCurrentTranscript("");
     };
 
     client.on("content", handleContent).on("turncomplete", handleTurnComplete)
-          .on("setupcomplete", () => {}).on("error", (e) => { setConnectionError(e.message); setIsConnecting(false); })
+          .on("error", (e) => { setConnectionError(e.message); setIsConnecting(false); })
           .on("close", (e) => { setIsConnecting(false); setConnectionError(e.reason || (e.code !== 1000 ? `Interrogation room closed (code: ${e.code})` : null)); });
 
     return () => {
-      client.off("content", handleContent).off("turncomplete", handleTurnComplete)
-            .off("error", () => {}).off("close", () => {});
+      client.off("content", handleContent).off("turncomplete", handleTurnComplete).off("error", () => {}).off("close", () => {});
     };
   }, [client, onWin, onLose, onTimerStart, onGoodArgument, onIncreaseImpatience, timerStarted]);
 
@@ -139,7 +126,7 @@ export function useInterrogationClient({
       hasStartedRef.current = true;
       setIsConnecting(true);
       const timer = setTimeout(async () => {
-        try { await connect(); setIsConnecting(false); } catch (error) {
+        try { await connect(); } catch (error) {
           setConnectionError(error instanceof Error ? error.message : "Connection failed");
           setIsConnecting(false);
         }
