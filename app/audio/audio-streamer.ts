@@ -7,14 +7,14 @@ export class AudioStreamer {
   public audioQueue: Float32Array[] = [];
   private isPlaying: boolean = false;
   private sampleRate: number = 24000;
-  private bufferSize: number = 7680;
+  private bufferSize: number = 2400;
   private processingBuffer: Float32Array = new Float32Array(0);
   private scheduledTime: number = 0;
   public gainNode: GainNode;
   public source: AudioBufferSourceNode;
   private isStreamComplete: boolean = false;
   private checkInterval: number | null = null;
-  private initialBufferTime: number = 0.1; //0.1 // 100ms initial buffer
+  private initialBufferTime: number = 0.18;
   private scheduledSourceCount: number = 0;
   private completionEmitted: boolean = false;
 
@@ -129,7 +129,7 @@ export class AudioStreamer {
   }
 
   private scheduleNextBuffer() {
-    const SCHEDULE_AHEAD_TIME = 0.2;
+    const SCHEDULE_AHEAD_TIME = 0.6;
 
     while (
       this.audioQueue.length > 0 &&
@@ -187,7 +187,7 @@ export class AudioStreamer {
             ) {
               this.scheduleNextBuffer();
             }
-          }, 100) as unknown as number;
+          }, 30) as unknown as number;
         }
       }
     } else {

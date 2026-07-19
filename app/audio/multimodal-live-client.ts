@@ -215,11 +215,6 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
 				this.emit("interrupted");
 				return;
 			}
-			if (isTurnComplete(serverContent)) {
-				this.log("server.send", "turnComplete");
-				this.emit("turncomplete");
-				//plausible theres more to the message, continue
-			}
 
 			if (isModelTurn(serverContent)) {
 				let parts: Part[] = serverContent.modelTurn.parts;
@@ -250,6 +245,11 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
 				const content: ModelTurn = { modelTurn: { parts } };
 				this.emit("content", content);
 				this.log(`server.content`, response);
+			}
+
+			if (isTurnComplete(serverContent)) {
+				this.log("server.send", "turnComplete");
+				this.emit("turncomplete");
 			}
 		}
 	}
