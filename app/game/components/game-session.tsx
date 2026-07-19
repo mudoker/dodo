@@ -67,8 +67,7 @@ export function GameSession({ sessionId, onChangeKey }: GameSessionProps) {
       systemInstruction: { parts: [{ text: DETECTIVE_SYSTEM_PROMPT }] },
       generationConfig: {
         responseModalities: ["AUDIO"] as const,
-        maxOutputTokens: 220,
-        temperature: 0.7,
+        temperature: 0.8,
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } },
         },
@@ -77,6 +76,7 @@ export function GameSession({ sessionId, onChangeKey }: GameSessionProps) {
         automaticActivityDetection: {
           disabled: true,
         },
+        activityHandling: "NO_INTERRUPTION",
         turnCoverage: "TURN_INCLUDES_ONLY_ACTIVITY",
       },
     });
