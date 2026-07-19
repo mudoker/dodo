@@ -11,29 +11,14 @@ import { FloatingBlob } from "./floating-blob";
 import { GameHeader } from "./game-header";
 import { GameHud } from "./game-hud";
 
+interface GameScreenProps {
+  crime: string; elapsedTime: number; suspicion: number; timerStarted: boolean; onChangeKey: () => void;
+  onWin: () => void; onLose: () => void; onTimerStart: () => void; onGoodArgument: () => void; onIncreaseImpatience: (amount: number) => void;
+}
+
 export function GameScreen({
-  crime,
-  elapsedTime,
-  suspicion,
-  onWin,
-  onLose,
-  onTimerStart,
-  onGoodArgument,
-  onIncreaseImpatience,
-  timerStarted,
-  onChangeKey,
-}: {
-  crime: string;
-  elapsedTime: number;
-  suspicion: number;
-  onWin: () => void;
-  onLose: () => void;
-  onTimerStart: () => void;
-  onGoodArgument: () => void;
-  onIncreaseImpatience: (amount: number) => void;
-  timerStarted: boolean;
-  onChangeKey: () => void;
-}) {
+  crime, elapsedTime, suspicion, onWin, onLose, onTimerStart, onGoodArgument, onIncreaseImpatience, timerStarted, onChangeKey
+}: GameScreenProps) {
   const {
     connected, isAiSpeaking, chatHistory, connectionError, isConnecting,
     showInnocenceBonus, volume, sendTextMessage, muted, setMuted,
@@ -49,17 +34,11 @@ export function GameScreen({
 
   const handleSendText = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!textInput.trim()) return;
-    sendTextMessage(textInput.trim());
-    setTextInput("");
+    if (textInput.trim()) { sendTextMessage(textInput.trim()); setTextInput(""); }
   };
 
   const getDetectiveMood = () => {
-    if (suspicion >= 85) return "Furious 😡";
-    if (suspicion >= 65) return "Hostile 😠";
-    if (suspicion >= 45) return "Suspicious 🤨";
-    if (suspicion >= 20) return "Impatient 😐";
-    return "Flustered 😳";
+    return suspicion >= 85 ? "Furious 😡" : suspicion >= 65 ? "Hostile 😠" : suspicion >= 45 ? "Suspicious 🤨" : suspicion >= 20 ? "Impatient 😐" : "Flustered 😳";
   };
 
   const currentScore = Math.max(0, 2000 - (suspicion * 12) - (elapsedTime * 2));
@@ -174,7 +153,25 @@ export function GameScreen({
                 </Button>
               </div>
               <span className={cn("text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5", connectionError ? "text-red-400" : !connected ? "text-zinc-600" : isAiSpeaking ? "text-violet-400" : muted ? "text-orange-400" : "text-emerald-400")}>
-                {connectionError ? <><ShieldAlert className="size-3.5" /><span onClick={triggerRetry} className="cursor-pointer underline">Error (Retry)</span></> : !connected ? <><Info className="size-3.5" /><span>Offline</span></> : isAiSpeaking ? <><span className="size-1.5 rounded-full bg-violet-400 animate-ping" /><span>Detective Replies</span></> : muted ? <><MicOff className="size-3.5" /><span>Muted</span></> : <><span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" /><span>Active Mic</span></>}
+                {connectionError ? (
+                  <div className="flex flex-col items-end gap-0.5 max-w-[240px] text-right">
+                    <span className="text-[9px] text-red-500 font-medium normal-case line-clamp-2 leading-tight select-text mb-0.5">
+                      {connectionError}
+                    </span>
+                    <span onClick={triggerRetry} className="cursor-pointer underline text-[10px] text-red-450 font-black tracking-widest uppercase flex items-center gap-1">
+                      <ShieldAlert className="size-3.5" />
+                      Retry Connection
+                    </span>
+                  </div>
+                ) : !connected ? (
+                  <><Info className="size-3.5" /><span>Offline</span></>
+                ) : isAiSpeaking ? (
+                  <><span className="size-1.5 rounded-full bg-violet-400 animate-ping" /><span>Detective Replies</span></>
+                ) : muted ? (
+                  <><MicOff className="size-3.5" /><span>Muted</span></>
+                ) : (
+                  <><span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" /><span>Active Mic</span></>
+                )}
               </span>
             </div>
           </div>

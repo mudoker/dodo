@@ -122,8 +122,8 @@ export function useInterrogationClient({
     };
 
     client.on("content", handleContent).on("turncomplete", handleTurnComplete)
-          .on("error", (e) => { setConnectionError(e.message); setIsConnecting(false); })
-          .on("close", (e) => { setIsConnecting(false); setConnectionError(e.reason || (e.code !== 1000 ? `Interrogation room closed (code: ${e.code})` : null)); });
+          .on("error", (e) => { setConnectionError(e.message); setIsConnecting(false); setIsAiSpeaking(false); })
+          .on("close", (e) => { setIsConnecting(false); setIsAiSpeaking(false); setConnectionError(e.reason || (e.code !== 1000 ? `Interrogation room closed (code: ${e.code})` : null)); });
 
     return () => {
       client.off("content", handleContent).off("turncomplete", handleTurnComplete).off("error", () => {}).off("close", () => {});
@@ -144,7 +144,14 @@ export function useInterrogationClient({
   }, [connected, client, muted, audioRecorder, timerStarted]);
 
   // Connection status sync
-  useEffect(() => { if (connected) { setIsConnecting(false); setConnectionError(null); } }, [connected]);
+  useEffect(() => {
+    if (connected) {
+      setIsConnecting(false);
+      setConnectionError(null);
+    } else {
+      setIsAiSpeaking(false);
+    }
+  }, [connected]);
 
   useEffect(() => {
     if (connected && crime && !hasSentAccusationRef.current) {
