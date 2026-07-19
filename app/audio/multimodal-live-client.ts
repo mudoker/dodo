@@ -87,10 +87,10 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
 
 		ws.addEventListener("message", async (evt: MessageEvent) => {
 			if (this.ws !== ws) return;
-			if (evt.data instanceof Blob) {
+			if (evt.data instanceof Blob || typeof evt.data === "string") {
 				this.receive(evt.data);
 			} else {
-				console.log("[MultimodalLiveClient] Received non-blob message:", evt.data);
+				console.log("[MultimodalLiveClient] Received non-json message:", evt.data);
 			}
 		});
 		return new Promise((resolve, reject) => {
@@ -177,10 +177,18 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
 		return false;
 	}
 
-	protected async receive(blob: Blob) {
-		const response: LiveIncomingMessage = (await blobToJSON(
-			blob,
-		)) as LiveIncomingMessage;
+	protected async receive(data: Blob | string) {
+		let response: LiveIncomingMessage;
+		try {
+			response = (
+				data instanceof Blob
+					? await blobToJSON(data)
+					: JSON.parse(data)
+			) as LiveIncomingMessage;
+		} catch (error) {
+			console.warn("[MultimodalLiveClient] Failed to parse message:", error);
+			return;
+		}
 		if (isToolCallMessage(response)) {
 			this.log("server.toolCall", response);
 			this.emit("toolcall", response.toolCall);

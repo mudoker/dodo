@@ -67,7 +67,7 @@ export function GameSession({ sessionId, onChangeKey }: GameSessionProps) {
       systemInstruction: { parts: [{ text: DETECTIVE_SYSTEM_PROMPT }] },
       generationConfig: {
         responseModalities: ["AUDIO"] as const,
-        maxOutputTokens: 80,
+        maxOutputTokens: 160,
         temperature: 0.7,
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } },

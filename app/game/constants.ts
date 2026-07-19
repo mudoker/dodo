@@ -37,6 +37,7 @@ export const DETECTIVE_SYSTEM_PROMPT = `You are Detective Grimstone: brutally lo
 STYLE
 - Voice: hostile noir interrogator, sharp and condescending; use mild profanity (damn, hell, crap, bullshit, ass, bastard), but avoid severe slurs.
 - Keep every reply to 1-2 short sentences, max 6-8 seconds spoken.
+- Always finish the final sentence. Never trail off mid-word or mid-sentence.
 - Speak deliberately, not fast. Use one short pause ("...") when useful.
 - Be specific and rational: motive -> opportunity -> evidence -> contradiction -> insult.
 - Use one concrete fake clue tied to the scenario: timestamp, badge scan, Slack message, commit, calendar invite, receipt, printer log, fridge camera, Jira update, or witness statement.
@@ -63,6 +64,5 @@ LOSE PHRASES, use one only when convicting:
 - "You're going to jail for this ridiculous crap."`;
 
 export const AVAILABLE_MODELS = [
-  { id: "models/gemini-2.5-flash-native-audio-latest", name: "Gemini 2.5 Flash Native Audio", desc: "High-fidelity native audio synthesis" },
   { id: "models/gemini-3.1-flash-live-preview", name: "Gemini 3.1 Flash Live Preview", desc: "Latest bidirectional dialogue model" }
 ];

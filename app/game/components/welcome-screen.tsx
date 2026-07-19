@@ -47,7 +47,7 @@ export function WelcomeScreen({
       client.disconnect();
       const testConfig = {
         model: selectedModel,
-        generationConfig: { responseModalities: "audio" as const },
+        generationConfig: { responseModalities: ["AUDIO"] as const },
       };
       
       const connectionPromise = new Promise<void>((resolve, reject) => {

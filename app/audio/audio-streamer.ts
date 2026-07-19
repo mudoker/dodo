@@ -15,8 +15,10 @@ export class AudioStreamer {
   private isStreamComplete: boolean = false;
   private checkInterval: number | null = null;
   private initialBufferTime: number = 0.1; //0.1 // 100ms initial buffer
-  private endOfQueueAudioSource: AudioBufferSourceNode | null = null;
+  private scheduledSourceCount: number = 0;
+  private completionEmitted: boolean = false;
 
+  public onStart = () => {};
   public onComplete = () => {};
 
   constructor(public context: AudioContext) {
@@ -59,6 +61,9 @@ export class AudioStreamer {
   }
 
   addPCM16(chunk: Uint8Array) {
+    // Reset completion state — new audio data means a fresh model turn is arriving
+    this.completionEmitted = false;
+    this.isStreamComplete = false;
     const float32Array = new Float32Array(chunk.length / 2);
     const dataView = new DataView(chunk.buffer);
 
@@ -86,10 +91,31 @@ export class AudioStreamer {
 
     if (!this.isPlaying) {
       this.isPlaying = true;
+      this.onStart();
       // Initialize scheduledTime only when we start playing
       this.scheduledTime = this.context.currentTime + this.initialBufferTime;
       this.scheduleNextBuffer();
     }
+  }
+
+  private maybeComplete() {
+    if (
+      this.completionEmitted ||
+      !this.isStreamComplete ||
+      this.audioQueue.length > 0 ||
+      this.processingBuffer.length > 0 ||
+      this.scheduledSourceCount > 0
+    ) {
+      return;
+    }
+
+    this.isPlaying = false;
+    this.completionEmitted = true;
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+    this.onComplete();
   }
 
   private createAudioBuffer(audioData: Float32Array): AudioBuffer {
@@ -113,24 +139,13 @@ export class AudioStreamer {
       const audioBuffer = this.createAudioBuffer(audioData);
       const source = this.context.createBufferSource();
 
-      if (this.audioQueue.length === 0) {
-        if (this.endOfQueueAudioSource) {
-          this.endOfQueueAudioSource.onended = null;
-        }
-        this.endOfQueueAudioSource = source;
-        source.onended = () => {
-          if (
-            !this.audioQueue.length &&
-            this.endOfQueueAudioSource === source
-          ) {
-            this.endOfQueueAudioSource = null;
-            this.onComplete();
-          }
-        };
-      }
-
       source.buffer = audioBuffer;
       source.connect(this.gainNode);
+      this.scheduledSourceCount += 1;
+      source.onended = () => {
+        this.scheduledSourceCount = Math.max(0, this.scheduledSourceCount - 1);
+        this.maybeComplete();
+      };
 
       const worklets = registeredWorklets.get(this.context);
 
@@ -162,11 +177,7 @@ export class AudioStreamer {
 
     if (this.audioQueue.length === 0 && this.processingBuffer.length === 0) {
       if (this.isStreamComplete) {
-        this.isPlaying = false;
-        if (this.checkInterval) {
-          clearInterval(this.checkInterval);
-          this.checkInterval = null;
-        }
+        this.maybeComplete();
       } else {
         if (!this.checkInterval) {
           this.checkInterval = window.setInterval(() => {
@@ -195,6 +206,8 @@ export class AudioStreamer {
     this.audioQueue = [];
     this.processingBuffer = new Float32Array(0);
     this.scheduledTime = this.context.currentTime;
+    this.scheduledSourceCount = 0;
+    this.completionEmitted = true;
 
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
@@ -218,6 +231,7 @@ export class AudioStreamer {
       await this.context.resume();
     }
     this.isStreamComplete = false;
+    this.completionEmitted = false;
     this.scheduledTime = this.context.currentTime + this.initialBufferTime;
     this.gainNode.gain.setValueAtTime(1, this.context.currentTime);
   }
@@ -229,9 +243,14 @@ export class AudioStreamer {
       this.processingBuffer = new Float32Array(0);
       if (this.isPlaying) {
         this.scheduleNextBuffer();
+      } else {
+        this.isPlaying = true;
+        this.onStart();
+        this.scheduledTime = this.context.currentTime + this.initialBufferTime;
+        this.scheduleNextBuffer();
       }
     } else {
-      this.onComplete();
+      this.maybeComplete();
     }
   }
 }

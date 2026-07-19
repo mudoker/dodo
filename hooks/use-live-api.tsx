@@ -16,6 +16,7 @@ export type UseLiveAPIResults = {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   volume: number;
+  outputPlaying: boolean;
   audioInputDevices: MediaDeviceInfo[];
   audioOutputDevices: MediaDeviceInfo[];
   selectedInputDeviceId: string;
@@ -69,6 +70,7 @@ export function useLiveAPI({
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
 
   const [connected, setConnected] = useState(false);
+  const [outputPlaying, setOutputPlaying] = useState(false);
   const [config, setConfig] = useState<LiveConfig>({
     model: 'models/gemini-2.0-flash',
     systemInstruction: {
@@ -99,6 +101,8 @@ export function useLiveAPI({
       audioContext({ id: 'audio-out' }).then((audioCtx: AudioContext) => {
         setOutputDeviceSupported(typeof (audioCtx as unknown as { setSinkId?: unknown }).setSinkId === "function");
         audioStreamerRef.current = new AudioStreamer(audioCtx);
+        audioStreamerRef.current.onStart = () => setOutputPlaying(true);
+        audioStreamerRef.current.onComplete = () => setOutputPlaying(false);
         audioStreamerRef.current
           .addWorklet<any>('vumeter-out', VolMeterWorket, (ev: any) => {
             setVolume(ev.data.volume);
@@ -128,7 +132,10 @@ export function useLiveAPI({
   }, [selectedOutputDeviceId]);
 
   useEffect(() => {
-    const stopAudioStreamer = () => audioStreamerRef.current?.stop();
+    const stopAudioStreamer = () => {
+      audioStreamerRef.current?.stop();
+      setOutputPlaying(false);
+    };
 
     const onClose = () => {
       // Ensure any ongoing assistant audio is stopped when the socket closes
@@ -136,19 +143,27 @@ export function useLiveAPI({
       setConnected(false);
     };
 
-    const onAudio = (data: ArrayBuffer) =>
+    const onAudio = (data: ArrayBuffer) => {
+      setOutputPlaying(true);
       audioStreamerRef.current?.addPCM16(new Uint8Array(data));
+    };
+
+    const onTurnComplete = () => {
+      audioStreamerRef.current?.complete();
+    };
 
     client
       .on('close', onClose)
       .on('interrupted', stopAudioStreamer)
-      .on('audio', onAudio);
+      .on('audio', onAudio)
+      .on('turncomplete', onTurnComplete);
 
     return () => {
       client
         .off('close', onClose)
         .off('interrupted', stopAudioStreamer)
-        .off('audio', onAudio);
+        .off('audio', onAudio)
+        .off('turncomplete', onTurnComplete);
     };
   }, [client]);
 
@@ -161,6 +176,7 @@ export function useLiveAPI({
     }
     console.log("[useLiveAPI] Disconnecting existing connection...");
     audioStreamerRef.current?.stop();
+    setOutputPlaying(false);
     setConnected(false);
     client.disconnect();
     console.log("[useLiveAPI] Calling client.connect with config...");
@@ -191,6 +207,7 @@ export function useLiveAPI({
   const disconnect = useCallback(async () => {
     // Proactively stop any ongoing assistant audio before disconnecting
     audioStreamerRef.current?.stop();
+    setOutputPlaying(false);
     client.disconnect();
     setConnected(false);
   }, [client]);
@@ -203,6 +220,7 @@ export function useLiveAPI({
     connect,
     disconnect,
     volume,
+    outputPlaying,
     audioInputDevices,
     audioOutputDevices,
     selectedInputDeviceId,

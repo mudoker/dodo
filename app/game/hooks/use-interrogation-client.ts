@@ -5,6 +5,15 @@ import { useLiveAPIContext } from "@/hooks/use-live-api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatMessage } from "../types";
 
+const MIN_SPEECH_START_THRESHOLD = 0.034;
+const MIN_SPEECH_CONTINUE_THRESHOLD = 0.018;
+const SILENCE_COMMIT_MS = 900;
+const MAX_ALIBI_MS = 9000;
+const PRE_SPEECH_CHUNK_LIMIT = 8;
+const SETUP_RETRY_MS = 12000;
+const SETUP_FAIL_MS = 24000;
+const SPEECH_START_FRAMES = 3;
+
 export function useInterrogationClient({
   crime, timerStarted, onTimerStart, onGoodArgument, onIncreaseImpatience, onWin, onLose
 }: {
@@ -12,7 +21,7 @@ export function useInterrogationClient({
   onIncreaseImpatience: (amount: number) => void; onWin: () => void; onLose: () => void;
 }) {
   const {
-    client, connected, connect, disconnect, volume, config,
+    client, connected, connect, disconnect, volume, outputPlaying, config,
     audioInputDevices, audioOutputDevices, selectedInputDeviceId, setSelectedInputDeviceId,
     selectedOutputDeviceId, setSelectedOutputDeviceId, outputDeviceSupported, refreshAudioDevices
   } = useLiveAPIContext();
@@ -25,6 +34,7 @@ export function useInterrogationClient({
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [micArmed, setMicArmed] = useState(false);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
+  const [pendingFirstTurnComplete, setPendingFirstTurnComplete] = useState(false);
   const [showInnocenceBonus, setShowInnocenceBonus] = useState(false);
   const [inputVolume, setInputVolume] = useState(0);
   const [lastInputAt, setLastInputAt] = useState<number | null>(null);
@@ -41,8 +51,14 @@ export function useInterrogationClient({
   const lastAudibleInputAtRef = useRef(0);
   const lastForcedResponseAtRef = useRef(0);
   const silenceCommitTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const userActivityStartedRef = useRef(false);
+  const userActivityStartedAtRef = useRef(0);
+  const noiseFloorRef = useRef(0.006);
+  const speechStartFramesRef = useRef(0);
+  const preSpeechChunksRef = useRef<string[]>([]);
   const activeInputDeviceIdRef = useRef<string | undefined>(undefined);
   const manuallyDisconnectedRef = useRef(false);
+  const setupRetryCountRef = useRef(0);
 
   useEffect(() => { transcriptRef.current = currentTranscript; }, [currentTranscript]);
   useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
@@ -70,21 +86,36 @@ export function useInterrogationClient({
     }
   }, [connect, isConfigReady, connected, isConnecting, connectionError]);
 
-  // Connection timeout check
+  // Startup watchdog. The first Live setup can stall, but a reconnect usually succeeds immediately.
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
     if (isConnecting) {
       timeoutId = setTimeout(() => {
-        if (!connected || !isSetupComplete) {
-          console.warn("[useInterrogationClient] Connection attempt timed out.");
+        if (!isSetupComplete) {
+          if (setupRetryCountRef.current < 1 && !manuallyDisconnectedRef.current) {
+            setupRetryCountRef.current += 1;
+            console.warn("[useInterrogationClient] Gemini Live setup stalled; retrying socket once.");
+            setConnectionError(null);
+            setIsSetupComplete(false);
+            setMicArmed(false);
+            connect().catch((error) => {
+              setConnectionError(error instanceof Error ? error.message : "Connection failed");
+              setIsConnecting(false);
+              hasStartedRef.current = false;
+            });
+            return;
+          }
+
+          console.warn("[useInterrogationClient] Gemini Live setup failed after retry.");
           disconnect();
-          setConnectionError("Connection timed out. Google AI Studio server is busy or the API key is unauthorized.");
+          setConnectionError("Live setup is taking too long. Retry the uplink or check the API key.");
           setIsConnecting(false);
+          hasStartedRef.current = false;
         }
-      }, 15000); // Live sessions can be slow on the first cold connection.
+      }, setupRetryCountRef.current < 1 ? SETUP_RETRY_MS : SETUP_FAIL_MS);
     }
     return () => { if (timeoutId) clearTimeout(timeoutId); };
-  }, [isConnecting, connected, isSetupComplete, disconnect]);
+  }, [connect, disconnect, isConnecting, isSetupComplete]);
 
   useEffect(() => {
     if (!client) return;
@@ -95,6 +126,10 @@ export function useInterrogationClient({
       setIsSetupComplete(false);
       setMicArmed(false);
       isAwaitingResponseRef.current = false;
+      userActivityStartedRef.current = false;
+      userActivityStartedAtRef.current = 0;
+      speechStartFramesRef.current = 0;
+      preSpeechChunksRef.current = [];
       setIsAwaitingResponse(false);
       hasStartedRef.current = false;
     };
@@ -104,11 +139,16 @@ export function useInterrogationClient({
       setIsSetupComplete(false);
       setMicArmed(false);
       isAwaitingResponseRef.current = false;
+      userActivityStartedRef.current = false;
+      userActivityStartedAtRef.current = 0;
+      speechStartFramesRef.current = 0;
+      preSpeechChunksRef.current = [];
       setIsAwaitingResponse(false);
       setConnectionError(e.reason || (e.code !== 1000 ? `Interrogation room closed (code: ${e.code})` : null));
       hasStartedRef.current = false;
     };
     const handleSetupComplete = () => {
+      setupRetryCountRef.current = 0;
       setIsSetupComplete(true);
       setIsConnecting(false);
       setConnectionError(null);
@@ -116,6 +156,7 @@ export function useInterrogationClient({
     const handleAudio = () => {
       isAwaitingResponseRef.current = false;
       setIsAwaitingResponse(false);
+      setPendingFirstTurnComplete(false);
       setIsAiSpeaking(true);
     };
     const handleContent = (content: any) => {
@@ -124,6 +165,7 @@ export function useInterrogationClient({
         setCurrentTranscript((prev) => prev + text);
         isAwaitingResponseRef.current = false;
         setIsAwaitingResponse(false);
+        setPendingFirstTurnComplete(false);
         setIsAiSpeaking(true);
         setChatHistory((prev) => {
           const lastMsg = prev[prev.length - 1];
@@ -146,9 +188,9 @@ export function useInterrogationClient({
     const handleTurnComplete = () => {
       isAwaitingResponseRef.current = false;
       setIsAwaitingResponse(false);
-      setIsAiSpeaking(false);
-      if (!firstTurnCompleteRef.current) { firstTurnCompleteRef.current = true; onTimerStart(); }
-      setMicArmed(true);
+      if (!firstTurnCompleteRef.current) {
+        setPendingFirstTurnComplete(true);
+      }
       const trans = transcriptRef.current.toLowerCase();
       if (["free to go", "wrong person", "case dismissed", "let you go", "dropping the charges"].some(p => trans.includes(p))) { onWin(); return; }
       if (["going down", "going to jail", "lock you up", "guilty as charged", "sending you to prison"].some(p => trans.includes(p))) { onLose(); return; }
@@ -191,9 +233,48 @@ export function useInterrogationClient({
   }, [client, onWin, onLose, onTimerStart, onGoodArgument, onIncreaseImpatience, timerStarted]);
 
   useEffect(() => {
+    if (outputPlaying) {
+      setIsAiSpeaking(true);
+      return;
+    }
+
+    setIsAiSpeaking(false);
+    if (pendingFirstTurnComplete && !firstTurnCompleteRef.current) {
+      firstTurnCompleteRef.current = true;
+      setPendingFirstTurnComplete(false);
+      onTimerStart();
+      setMicArmed(true);
+    }
+  }, [onTimerStart, outputPlaying, pendingFirstTurnComplete]);
+
+  useEffect(() => {
+    const endUserActivity = () => {
+      if (!userActivityStartedRef.current || isAwaitingResponseRef.current) return;
+      const now = Date.now();
+      if (now - lastForcedResponseAtRef.current < 1800) return;
+
+      lastForcedResponseAtRef.current = now;
+      isAwaitingResponseRef.current = true;
+      userActivityStartedRef.current = false;
+      userActivityStartedAtRef.current = 0;
+      speechStartFramesRef.current = 0;
+      preSpeechChunksRef.current = [];
+      setIsAwaitingResponse(true);
+      try {
+        client.sendActivityEnd();
+      } catch {
+        isAwaitingResponseRef.current = false;
+        setIsAwaitingResponse(false);
+        audioRecorder.stop();
+      }
+    };
     const onData = (base64: string) => {
       if (isAwaitingResponseRef.current || isAiSpeakingRef.current) return;
       try {
+        if (!userActivityStartedRef.current) {
+          preSpeechChunksRef.current = [...preSpeechChunksRef.current, base64].slice(-PRE_SPEECH_CHUNK_LIMIT);
+          return;
+        }
         client.sendRealtimeInput([{ mimeType: "audio/pcm;rate=16000", data: base64 }]);
       } catch {
         audioRecorder.stop();
@@ -215,28 +296,69 @@ export function useInterrogationClient({
         ) {
           return;
         }
-        lastForcedResponseAtRef.current = now;
-        isAwaitingResponseRef.current = true;
-        setIsAwaitingResponse(true);
-        try {
-          client.sendAudioStreamEnd();
-        } catch {
-          isAwaitingResponseRef.current = false;
-          setIsAwaitingResponse(false);
-          audioRecorder.stop();
-        }
-      }, 950);
+        endUserActivity();
+      }, SILENCE_COMMIT_MS);
     };
     const onVolume = (nextVolume: number) => {
       const now = Date.now();
       if (now - lastMeterUpdateRef.current < 60) return;
       lastMeterUpdateRef.current = now;
       setInputVolume(nextVolume);
-      if (nextVolume > 0.025) {
+
+      if (!userActivityStartedRef.current && !isAwaitingResponseRef.current && !isAiSpeakingRef.current) {
+        noiseFloorRef.current = noiseFloorRef.current * 0.94 + Math.min(nextVolume, 0.08) * 0.06;
+      }
+
+      const speechStartThreshold = Math.max(MIN_SPEECH_START_THRESHOLD, noiseFloorRef.current * 3.2);
+      const speechContinueThreshold = Math.max(MIN_SPEECH_CONTINUE_THRESHOLD, noiseFloorRef.current * 2.2);
+
+      if (userActivityStartedRef.current && now - userActivityStartedAtRef.current > MAX_ALIBI_MS) {
+        endUserActivity();
+        return;
+      }
+
+      if (nextVolume > speechStartThreshold) {
+        if (!userActivityStartedRef.current && !isAwaitingResponseRef.current && !isAiSpeakingRef.current) {
+          speechStartFramesRef.current += 1;
+          if (speechStartFramesRef.current < SPEECH_START_FRAMES) return;
+
+          userActivityStartedRef.current = true;
+          userActivityStartedAtRef.current = now;
+          try {
+            client.sendActivityStart();
+            preSpeechChunksRef.current.forEach((data) => {
+              client.sendRealtimeInput([{ mimeType: "audio/pcm;rate=16000", data }]);
+            });
+            preSpeechChunksRef.current = [];
+          } catch {
+            userActivityStartedRef.current = false;
+            audioRecorder.stop();
+            return;
+          }
+        }
         userSpokeRef.current = true;
         lastAudibleInputAtRef.current = now;
         setLastInputAt(now);
         queueSilenceCommit();
+        return;
+      }
+
+      speechStartFramesRef.current = 0;
+
+      if (!userActivityStartedRef.current) return;
+
+      if (nextVolume > speechContinueThreshold) {
+        lastAudibleInputAtRef.current = now;
+        setLastInputAt(now);
+        queueSilenceCommit();
+        return;
+      }
+
+      if (
+        now - lastAudibleInputAtRef.current > SILENCE_COMMIT_MS ||
+        now - userActivityStartedAtRef.current > MAX_ALIBI_MS
+      ) {
+        endUserActivity();
       }
     };
     if (connected && !muted && audioRecorder && micArmed) {
@@ -256,6 +378,10 @@ export function useInterrogationClient({
     } else {
       audioRecorder.stop();
       activeInputDeviceIdRef.current = undefined;
+      userActivityStartedRef.current = false;
+      userActivityStartedAtRef.current = 0;
+      speechStartFramesRef.current = 0;
+      preSpeechChunksRef.current = [];
       setInputVolume(0);
       isAwaitingResponseRef.current = false;
       setIsAwaitingResponse(false);
@@ -289,9 +415,9 @@ export function useInterrogationClient({
       setIsAiSpeaking(true);
       const timer = setTimeout(() => {
         try {
-          client.send({
-            text: `Open the interrogation now. Accuse the suspect of: "${crime}". State one concrete fake clue and one pointed question.`
-          }, true);
+          client.sendRealtimeText(
+            `Open the interrogation now. Accuse the suspect of: "${crime}". State one concrete fake clue and one pointed question.`
+          );
         } catch (e) {
           setConnectionError("Failed to initiate interrogation");
           setIsAiSpeaking(false);
@@ -308,6 +434,12 @@ export function useInterrogationClient({
     hasSentAccusationRef.current = false;
     firstTurnCompleteRef.current = false;
     userSpokeRef.current = false;
+    setupRetryCountRef.current = 0;
+    userActivityStartedRef.current = false;
+    userActivityStartedAtRef.current = 0;
+    noiseFloorRef.current = 0.006;
+    speechStartFramesRef.current = 0;
+    preSpeechChunksRef.current = [];
     transcriptRef.current = "";
     lastAudibleInputAtRef.current = 0;
     lastForcedResponseAtRef.current = 0;
@@ -318,6 +450,7 @@ export function useInterrogationClient({
     setCurrentTranscript("");
     setIsSetupComplete(false);
     setMicArmed(false);
+    setPendingFirstTurnComplete(false);
     isAwaitingResponseRef.current = false;
     setIsAwaitingResponse(false);
     setInputVolume(0);
@@ -349,7 +482,7 @@ export function useInterrogationClient({
 
   const sendTextMessage = useCallback((text: string) => {
     if (!text.trim() || !connected || !client) return;
-    client.send({ text }, true);
+    client.sendRealtimeText(text);
     setChatHistory((prev) => [...prev, { id: Math.random().toString(), sender: "user", text, timestamp: new Date(), isVoice: false }]);
   }, [connected, client]);
 

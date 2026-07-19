@@ -64,7 +64,7 @@ function WelcomeApp({
 export default function GamePage() {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("models/gemini-2.5-flash-native-audio-latest");
+  const [selectedModel, setSelectedModel] = useState("models/gemini-3.1-flash-live-preview");
 
   useEffect(() => {
     const stored = localStorage.getItem("dodo_gemini_api_key");

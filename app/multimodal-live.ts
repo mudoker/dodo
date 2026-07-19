@@ -27,7 +27,7 @@ export type LiveConfig = {
 };
 
 export type LiveGenerationConfig = GenerationConfig & {
-  responseModalities: 'text' | 'audio' | 'image' | Array<'TEXT' | 'AUDIO' | 'IMAGE'>;
+  responseModalities: 'text' | 'audio' | 'image' | ReadonlyArray<'TEXT' | 'AUDIO' | 'IMAGE'>;
   speechConfig?: {
     voiceConfig?: {
       prebuiltVoiceConfig?: {
