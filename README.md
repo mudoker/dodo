@@ -51,7 +51,7 @@ bun dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to start playing.
 
 ### 4. API Key Setup
-When the application launches, enter your Google Gemini API key (starting with `AIza`) in the secure entry modal. You can obtain a free API key at [Google AI Studio](https://aistudio.google.com/app/apikey).
+When the application launches, enter your Google Gemini API key in the secure entry modal. You can obtain a free API key at [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ---
 

@@ -1702,11 +1702,6 @@ function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => void })
       return;
     }
 
-    if (!trimmedKey.startsWith("AIza")) {
-      setError("Invalid API key format. Google API keys start with 'AIza'");
-      return;
-    }
-
     setError("");
     onApiKeySet(trimmedKey);
   };
@@ -1747,7 +1742,7 @@ function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => void })
                 setApiKey(e.target.value);
                 setError("");
               }}
-              placeholder="AIzaSy..."
+              placeholder="Enter your API key..."
               className={cn(
                 "w-full bg-black/40 border-zinc-800 text-white placeholder:text-zinc-700",
                 error && "border-red-500/50 focus:border-red-500"
