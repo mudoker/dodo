@@ -59,6 +59,9 @@ export function useInterrogationClient({
   const activeInputDeviceIdRef = useRef<string | undefined>(undefined);
   const manuallyDisconnectedRef = useRef(false);
   const setupRetryCountRef = useRef(0);
+  // Cooldown after AI stops speaking — prevents mic bleed triggering server-side interruption
+  const aiStoppedSpeakingAtRef = useRef(0);
+  const AI_SPEECH_COOLDOWN_MS = 700;
 
   useEffect(() => { transcriptRef.current = currentTranscript; }, [currentTranscript]);
   useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
@@ -238,6 +241,8 @@ export function useInterrogationClient({
       return;
     }
 
+    // Record the exact moment the AI stopped — used for cooldown guard in onData
+    aiStoppedSpeakingAtRef.current = Date.now();
     setIsAiSpeaking(false);
     if (pendingFirstTurnComplete && !firstTurnCompleteRef.current) {
       firstTurnCompleteRef.current = true;
@@ -269,7 +274,9 @@ export function useInterrogationClient({
       }
     };
     const onData = (base64: string) => {
+      // Block if AI is speaking OR within the cooldown window after it just stopped
       if (isAwaitingResponseRef.current || isAiSpeakingRef.current) return;
+      if (Date.now() - aiStoppedSpeakingAtRef.current < AI_SPEECH_COOLDOWN_MS) return;
       try {
         if (!userActivityStartedRef.current) {
           preSpeechChunksRef.current = [...preSpeechChunksRef.current, base64].slice(-PRE_SPEECH_CHUNK_LIMIT);
