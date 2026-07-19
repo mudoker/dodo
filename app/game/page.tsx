@@ -38,7 +38,7 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
     setTimerStarted(false);
 
     const gameConfig = {
-      model: "models/gemini-2.0-flash-live-001",
+      model: "models/gemini-2.0-flash-exp",
       systemInstruction: { parts: [{ text: DETECTIVE_SYSTEM_PROMPT }] },
       generationConfig: {
         responseModalities: "audio" as const,
@@ -153,7 +153,7 @@ export default function GamePage() {
   };
 
   const host = "generativelanguage.googleapis.com";
-  const uri = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent`;
+  const uri = `wss://${host}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent`;
 
   if (!isLoaded) {
     return (
