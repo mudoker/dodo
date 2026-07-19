@@ -22,6 +22,7 @@ export type LiveConfig = {
   model: string;
   systemInstruction?: { parts: Part[] };
   generationConfig?: Partial<LiveGenerationConfig>;
+  realtimeInputConfig?: RealtimeInputConfig;
   tools?: Array<Tool | { googleSearch: {} } | { codeExecution: {} }>;
 };
 
@@ -34,6 +35,18 @@ export type LiveGenerationConfig = GenerationConfig & {
       };
     };
   };
+};
+
+export type RealtimeInputConfig = {
+  automaticActivityDetection?: {
+    disabled?: boolean;
+    startOfSpeechSensitivity?: 'START_SENSITIVITY_UNSPECIFIED' | 'START_SENSITIVITY_HIGH' | 'START_SENSITIVITY_LOW';
+    prefixPaddingMs?: number;
+    endOfSpeechSensitivity?: 'END_SENSITIVITY_UNSPECIFIED' | 'END_SENSITIVITY_HIGH' | 'END_SENSITIVITY_LOW';
+    silenceDurationMs?: number;
+  };
+  activityHandling?: 'ACTIVITY_HANDLING_UNSPECIFIED' | 'START_OF_ACTIVITY_INTERRUPTS' | 'NO_INTERRUPTION';
+  turnCoverage?: 'TURN_COVERAGE_UNSPECIFIED' | 'TURN_INCLUDES_ONLY_ACTIVITY' | 'TURN_INCLUDES_ALL_INPUT';
 };
 
 export type LiveOutgoingMessage =
@@ -58,6 +71,7 @@ export type RealtimeInputMessage = {
     mediaChunks?: GenerativeContentBlob[];
     audio?: GenerativeContentBlob;
     video?: GenerativeContentBlob;
+    audioStreamEnd?: boolean;
     text?: string;
   };
 };

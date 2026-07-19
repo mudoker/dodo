@@ -16,6 +16,14 @@ export type UseLiveAPIResults = {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   volume: number;
+  audioInputDevices: MediaDeviceInfo[];
+  audioOutputDevices: MediaDeviceInfo[];
+  selectedInputDeviceId: string;
+  setSelectedInputDeviceId: (deviceId: string) => void;
+  selectedOutputDeviceId: string;
+  setSelectedOutputDeviceId: (deviceId: string) => void;
+  outputDeviceSupported: boolean;
+  refreshAudioDevices: () => Promise<void>;
 };
 
 
@@ -72,11 +80,24 @@ export function useLiveAPI({
     },
   });
   const [volume, setVolume] = useState(0);
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedInputDeviceId, setSelectedInputDeviceId] = useState("");
+  const [selectedOutputDeviceId, setSelectedOutputDeviceId] = useState("");
+  const [outputDeviceSupported, setOutputDeviceSupported] = useState(false);
+
+  const refreshAudioDevices = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    setAudioInputDevices(devices.filter((device) => device.kind === "audioinput"));
+    setAudioOutputDevices(devices.filter((device) => device.kind === "audiooutput"));
+  }, []);
 
   // register audio for streaming server -> speakers
   useEffect(() => {
     if (!audioStreamerRef.current) {
       audioContext({ id: 'audio-out' }).then((audioCtx: AudioContext) => {
+        setOutputDeviceSupported(typeof (audioCtx as unknown as { setSinkId?: unknown }).setSinkId === "function");
         audioStreamerRef.current = new AudioStreamer(audioCtx);
         audioStreamerRef.current
           .addWorklet<any>('vumeter-out', VolMeterWorket, (ev: any) => {
@@ -88,6 +109,23 @@ export function useLiveAPI({
       });
     }
   }, []);
+
+  useEffect(() => {
+    refreshAudioDevices().catch(() => {});
+    navigator.mediaDevices?.addEventListener?.("devicechange", refreshAudioDevices);
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.("devicechange", refreshAudioDevices);
+    };
+  }, [refreshAudioDevices]);
+
+  useEffect(() => {
+    const audioCtx = audioStreamerRef.current?.context;
+    const setSinkId = (audioCtx as unknown as { setSinkId?: (sinkId: string) => Promise<void> })?.setSinkId;
+    if (!audioCtx || !setSinkId) return;
+    setSinkId.call(audioCtx, selectedOutputDeviceId).catch((error) => {
+      console.warn("[useLiveAPI] Failed to set output device:", error);
+    });
+  }, [selectedOutputDeviceId]);
 
   useEffect(() => {
     const stopAudioStreamer = () => audioStreamerRef.current?.stop();
@@ -122,6 +160,8 @@ export function useLiveAPI({
       throw new Error('config has not been set');
     }
     console.log("[useLiveAPI] Disconnecting existing connection...");
+    audioStreamerRef.current?.stop();
+    setConnected(false);
     client.disconnect();
     console.log("[useLiveAPI] Calling client.connect with config...");
     try {
@@ -163,5 +203,13 @@ export function useLiveAPI({
     connect,
     disconnect,
     volume,
+    audioInputDevices,
+    audioOutputDevices,
+    selectedInputDeviceId,
+    setSelectedInputDeviceId,
+    selectedOutputDeviceId,
+    setSelectedOutputDeviceId,
+    outputDeviceSupported,
+    refreshAudioDevices,
   };
 }

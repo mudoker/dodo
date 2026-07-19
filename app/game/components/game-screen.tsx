@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flag, Mic, MicOff, PhoneOff, RefreshCw, ShieldAlert, Wifi } from "lucide-react";
+import { Activity, Flag, Headphones, Mic, MicOff, PhoneOff, RefreshCw, ShieldAlert, Wifi } from "lucide-react";
 import { LivingOrb } from "./living-orb";
 import { useInterrogationClient } from "../hooks/use-interrogation-client";
 
@@ -17,7 +17,9 @@ export function GameScreen({
 }: GameScreenProps) {
   const {
     connected, isAiSpeaking, connectionError, isConnecting,
-    volume, muted, setMuted, disconnect, connect, triggerRetry
+    volume, inputVolume, lastInputAt, micArmed, isAwaitingResponse, muted, setMuted, disconnect, connect, triggerRetry,
+    audioInputDevices, audioOutputDevices, selectedInputDeviceId, setSelectedInputDeviceId,
+    selectedOutputDeviceId, setSelectedOutputDeviceId, outputDeviceSupported
   } = useInterrogationClient({
     crime, timerStarted, onTimerStart, onGoodArgument, onIncreaseImpatience, onWin, onLose
   });
@@ -27,6 +29,7 @@ export function GameScreen({
     if (isConnecting) return "SYNCHRONIZING BIO-UPLINK...";
     if (!connected) return "OFFLINE";
     if (isAiSpeaking) return "ENTITY IS RESPONDING";
+    if (isAwaitingResponse) return "ANALYZING ALIBI...";
     if (muted) return "MICROPHONE MUTED";
     return "LISTENING TO ALIBI...";
   };
@@ -37,16 +40,33 @@ export function GameScreen({
       ? "connecting"
       : connected && isAiSpeaking
         ? "talking"
-        : connected && muted
-          ? "muted"
-          : connected
-            ? "listening"
-            : "offline";
+        : connected && isAwaitingResponse
+          ? "listening"
+          : connected && muted
+            ? "muted"
+            : connected
+              ? "listening"
+              : "offline";
 
   const surrender = () => {
     if (connected) disconnect();
     onLose();
   };
+
+  const micLevel = muted || !connected || !micArmed ? 0 : Math.min(1, inputVolume * 18);
+  const micActive = micLevel > 0.14;
+  const heardRecently = Boolean(lastInputAt && Date.now() - lastInputAt < 1200);
+  const micStatusText = muted
+    ? "MIC MUTED"
+    : !connected
+      ? "MIC OFFLINE"
+      : !micArmed
+        ? "MIC ARMS AFTER FIRST RESPONSE"
+        : isAwaitingResponse
+          ? "ALIBI SENT"
+        : micActive || heardRecently
+          ? "MIC RECEIVING"
+          : "NO VOICE DETECTED";
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative flex h-screen w-screen flex-col justify-between bg-black p-5 font-mono text-zinc-400 select-none overflow-hidden sm:p-8">
@@ -83,6 +103,88 @@ export function GameScreen({
           <p className="max-w-xs text-[10px] font-sans leading-relaxed tracking-wide text-zinc-500 select-none">
             {connectionError ? "Google Live connection stalled. Retry the uplink or reset the API key." : connected ? "Microphone active. Speak your alibi clearly to defend yourself." : "Establish transmission connection to synchronize the uplink."}
           </p>
+          <div className="mx-auto mt-4 w-[min(88vw,24rem)] rounded-lg border border-zinc-800/80 bg-black/45 p-3 text-left shadow-[0_0_30px_rgba(34,211,238,0.06)] backdrop-blur-md">
+            <div className="mb-2 flex items-center justify-between gap-3 text-[9px] font-black uppercase tracking-[0.18em]">
+              <span className={cn("flex items-center gap-1.5", micActive || heardRecently ? "text-cyan-300" : "text-zinc-500")}>
+                {muted ? <MicOff className="size-3.5" /> : <Mic className="size-3.5" />}
+                {micStatusText}
+              </span>
+              <span className={cn("flex items-center gap-1.5", connected && !connectionError ? "text-emerald-300" : "text-red-400")}>
+                <Activity className="size-3.5" />
+                {connected && !connectionError ? "SIGNAL GOOD" : "SIGNAL LOST"}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-zinc-900">
+              <motion.div
+                className={cn(
+                  "h-full rounded-full",
+                  micActive || heardRecently
+                    ? "bg-gradient-to-r from-cyan-400 via-emerald-300 to-amber-300 shadow-[0_0_14px_rgba(34,211,238,0.45)]"
+                    : "bg-zinc-700"
+                )}
+                animate={{ width: `${Math.max(4, micLevel * 100)}%` }}
+                transition={{ duration: 0.12, ease: "easeOut" }}
+              />
+            </div>
+            <div className="mt-2 grid grid-cols-12 gap-1">
+              {Array.from({ length: 12 }).map((_, index) => {
+                const active = micLevel >= (index + 1) / 12;
+                return (
+                  <span
+                    key={index}
+                    className={cn(
+                      "h-1 rounded-full transition-colors",
+                      active ? "bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.45)]" : "bg-zinc-800"
+                    )}
+                  />
+                );
+              })}
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                  <Mic className="size-3" />
+                  Input
+                </span>
+                <select
+                  value={selectedInputDeviceId}
+                  onChange={(event) => setSelectedInputDeviceId(event.target.value)}
+                  className="h-8 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 text-[10px] font-bold text-zinc-300 outline-none transition-colors hover:border-cyan-500/50 focus:border-cyan-400"
+                >
+                  <option value="">Default microphone</option>
+                  {audioInputDevices.map((device, index) => (
+                    <option key={device.deviceId || `input-${index}`} value={device.deviceId}>
+                      {device.label || `Microphone ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                  <Headphones className="size-3" />
+                  Output
+                </span>
+                <select
+                  value={selectedOutputDeviceId}
+                  onChange={(event) => setSelectedOutputDeviceId(event.target.value)}
+                  disabled={!outputDeviceSupported}
+                  className={cn(
+                    "h-8 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 text-[10px] font-bold outline-none transition-colors",
+                    outputDeviceSupported
+                      ? "text-zinc-300 hover:border-cyan-500/50 focus:border-cyan-400"
+                      : "cursor-not-allowed text-zinc-600"
+                  )}
+                >
+                  <option value="">{outputDeviceSupported ? "Default speaker" : "Browser default only"}</option>
+                  {audioOutputDevices.map((device, index) => (
+                    <option key={device.deviceId || `output-${index}`} value={device.deviceId}>
+                      {device.label || `Speaker ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
