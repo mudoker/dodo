@@ -1,15 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import { Info, Mic, MicOff, Pause, Play, Send, ShieldAlert, Terminal, Zap } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Mic, MicOff, PhoneOff, RefreshCw, ShieldAlert, Wifi } from "lucide-react";
+import { useState } from "react";
 import { useInterrogationClient } from "../hooks/use-interrogation-client";
-import { FloatingBlob } from "./floating-blob";
-import { GameHeader } from "./game-header";
-import { GameHud } from "./game-hud";
 
 interface GameScreenProps {
   crime: string; elapsedTime: number; suspicion: number; timerStarted: boolean; onChangeKey: () => void;
@@ -20,174 +16,141 @@ export function GameScreen({
   crime, elapsedTime, suspicion, onWin, onLose, onTimerStart, onGoodArgument, onIncreaseImpatience, timerStarted, onChangeKey
 }: GameScreenProps) {
   const {
-    connected, isAiSpeaking, chatHistory, connectionError, isConnecting,
-    showInnocenceBonus, volume, sendTextMessage, muted, setMuted,
-    disconnect, connect, triggerRetry
+    connected, isAiSpeaking, connectionError, isConnecting,
+    volume, muted, setMuted, disconnect, connect, triggerRetry
   } = useInterrogationClient({
     crime, timerStarted, onTimerStart, onGoodArgument, onIncreaseImpatience, onWin, onLose
   });
 
-  const [textInput, setTextInput] = useState("");
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory, isAiSpeaking]);
-
-  const handleSendText = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (textInput.trim()) { sendTextMessage(textInput.trim()); setTextInput(""); }
+  const getOrbGradients = () => {
+    if (suspicion >= 80) return "from-red-605 via-orange-600 to-rose-650 shadow-[0_0_60px_rgba(239,68,68,0.25)]";
+    if (suspicion >= 50) return "from-amber-500 via-orange-500 to-yellow-600 shadow-[0_0_60px_rgba(245,158,11,0.25)]";
+    return "from-cyan-500 via-violet-600 to-fuchsia-600 shadow-[0_0_60px_rgba(168,85,247,0.25)]";
   };
 
-  const getDetectiveMood = () => {
-    return suspicion >= 85 ? "Furious 😡" : suspicion >= 65 ? "Hostile 😠" : suspicion >= 45 ? "Suspicious 🤨" : suspicion >= 20 ? "Impatient 😐" : "Flustered 😳";
+  const getStatusText = () => {
+    if (connectionError) return "TRANSMISSION INTERRUPTED";
+    if (isConnecting) return "SYNCHRONIZING BIO-UPLINK...";
+    if (!connected) return "OFFLINE";
+    if (isAiSpeaking) return "ENTITY IS RESPONDING";
+    if (muted) return "MICROPHONE MUTED";
+    return "LISTENING TO ALIBI...";
   };
-
-  const currentScore = Math.max(0, 2000 - (suspicion * 12) - (elapsedTime * 2));
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative flex min-h-screen flex-col overflow-hidden bg-black font-sans">
-      <div className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center opacity-30 blur-2xl">
-        <FloatingBlob isActive={connected} volume={volume} isSpeaking={isAiSpeaking} />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative flex h-screen w-screen flex-col justify-between p-8 bg-black text-zinc-400 font-mono overflow-hidden select-none">
+      {/* Background Grid details */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#07070a_1px,transparent_1px),linear-gradient(to_bottom,#07070a_1px,transparent_1px)] bg-[size:5rem_5rem] opacity-35 pointer-events-none z-0" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.85)_95%)] pointer-events-none z-0" />
+
+      {/* Top Header Status Bar */}
+      <div className="relative z-10 w-full flex items-center justify-between text-[10px] text-zinc-650 border-b border-zinc-900/60 pb-3">
+        <div className="flex items-center gap-2">
+          <Wifi className={cn("size-3.5", connected ? "text-cyan-400 animate-pulse" : "text-zinc-700")} />
+          <span className={cn("font-bold tracking-widest", connected ? "text-cyan-400/80" : "text-zinc-700")}>
+            UPLINK: {connected ? `CH_LIVE_${crime.length}` : "STANDBY"}
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className={cn("font-bold transition-all", suspicion >= 80 ? "text-red-500" : suspicion >= 50 ? "text-amber-500" : "text-cyan-400/80")}>THREAT INDEX: {suspicion}%</span>
+          <button onClick={onChangeKey} className="hover:text-red-400 font-bold uppercase transition-colors cursor-pointer">
+            Reset Key
+          </button>
+        </div>
       </div>
-      {/* Tactical Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0b0b0f_1px,transparent_1px),linear-gradient(to_bottom,#0b0b0f_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 pointer-events-none z-[1]" />
-      <div className="pointer-events-none fixed inset-0 z-[2] bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.6)_95%)]" />
 
-      {/* Header */}
-      <GameHeader elapsedTime={elapsedTime} crime={crime} onChangeKey={onChangeKey} />
+      {/* Center Voice Orb Section */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center">
+        <div className="relative flex items-center justify-center size-80">
+          {/* Outer Pulsing Glow Aura */}
+          <motion.div
+            animate={{
+              scale: isConnecting ? [1, 1.04, 1] : connected && isAiSpeaking ? [1, 1.16 + volume * 1.6, 1] : [1, 1.02, 1],
+              opacity: connected ? [0.15, 0.35, 0.15] : [0.05, 0.1, 0.05],
+              borderRadius: ["42% 58% 50% 50% / 50% 45% 55% 50%", "50% 50% 42% 58% / 45% 55% 50% 50%", "42% 58% 50% 50% / 50% 45% 55% 50%"]
+            }}
+            transition={{ duration: connected && isAiSpeaking ? 0.3 : 5, repeat: Infinity, ease: "easeInOut" }}
+            className={cn("absolute size-64 bg-gradient-to-tr blur-3xl transition-all duration-700", getOrbGradients())}
+          />
 
-      {/* Innocence Gain Alert */}
-      <AnimatePresence>
-        {showInnocenceBonus && (
-          <motion.div initial={{ opacity: 0, y: -40, scale: 0.8 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }} className="fixed left-1/2 top-28 z-50 -translate-x-1/2 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/95 to-zinc-950/95 px-6 py-3 shadow-xl backdrop-blur-xl flex items-center gap-2.5">
-            <Zap className="size-5 text-emerald-400 animate-bounce" />
-            <div>
-              <p className="text-xs font-bold text-emerald-400 uppercase">Innocence Gain</p>
-              <p className="text-[10px] text-zinc-400">Suspicion Level Decreased by 15%</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {/* Inner Glow Aura */}
+          <motion.div
+            animate={{
+              scale: isConnecting ? [1, 1.06, 1] : connected && isAiSpeaking ? [1, 1.1 + volume * 1.1, 1] : [1, 1.01, 1],
+              borderRadius: ["50% 50% 42% 58% / 45% 55% 50% 50%", "45% 55% 50% 50% / 50% 45% 55% 50%", "50% 50% 42% 58% / 45% 55% 50% 50%"]
+            }}
+            transition={{ duration: connected && isAiSpeaking ? 0.45 : 4, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+            className={cn("absolute size-52 bg-gradient-to-tr blur-2xl opacity-60 transition-all duration-700", getOrbGradients())}
+          />
 
-      {/* Main Board */}
-      <main className="relative z-10 flex flex-col lg:flex-row gap-6 px-6 py-6 max-w-6xl mx-auto w-full overflow-hidden flex-1">
-        {/* Left Side: Interrogation Chat log */}
-        <div className="flex flex-1 flex-col h-[calc(100vh-220px)] lg:h-[calc(100vh-200px)] min-h-[350px] rounded-xl border border-zinc-900 bg-zinc-950/20 overflow-hidden shadow-2xl backdrop-blur-md">
-          <div className="flex items-center justify-between border-b border-zinc-900 bg-zinc-950/80 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500"></span>
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 font-mono">INTERROGATION TRANSCRIPT</span>
-            </div>
-            <span className="text-[9px] font-mono text-zinc-500 font-bold uppercase">CASE ID: #{(crime ? crime.length * 17 : 99)}</span>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto space-y-4 pr-3 pb-4 scrollbar bg-zinc-950/10 p-5 shadow-inner select-text">
-            {chatHistory.length === 0 && !isConnecting && (
-              <div className="flex h-full flex-col items-center justify-center text-center text-zinc-500 space-y-6">
-                <div className="relative flex items-center justify-center">
-                  <motion.div
-                    className="absolute size-24 rounded-full border border-violet-500/20"
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.1, 0.4, 0.1] }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  />
-                  <motion.div
-                    className="absolute size-16 rounded-full border border-cyan-500/25"
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
-                    transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
-                  />
-                  <div className="relative size-10 rounded-full bg-zinc-950 border border-zinc-900 flex items-center justify-center">
-                    <Terminal className="size-4.5 text-violet-400 animate-pulse" />
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <p className="font-mono text-[10px] font-bold text-zinc-300 uppercase tracking-widest animate-pulse">ESTABLISHING AUDIO TRANSMISSION</p>
-                  <p className="text-[9px] text-zinc-500 max-w-xs leading-normal">
-                    Secure satellite uplink handshaking... please standby for detective accusation feed.
-                  </p>
-                </div>
-              </div>
-            )}
-            {isConnecting && <div className="flex h-full flex-col items-center justify-center text-center text-amber-500 space-y-3 animate-pulse"><div className="size-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" /><p className="text-xs font-bold uppercase">Connecting...</p></div>}
-            {chatHistory.map((msg) => (
-              <motion.div key={msg.id} initial={{ opacity: 0, y: 20, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 18 }} className={cn("flex w-full flex-col", msg.sender === "detective" ? "items-start" : "items-end")}>
-                <div className="flex items-center gap-2 mb-1 px-1"><span className={cn("text-[10px] font-bold uppercase tracking-wider", msg.sender === "detective" ? "text-violet-400" : "text-cyan-400")}>{msg.sender === "detective" ? "Detective Grimstone" : "You (Suspect)"}</span></div>
-                <div className={cn("max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed border shadow-md", msg.sender === "detective" ? "bg-gradient-to-br from-violet-950/40 to-zinc-950/80 text-zinc-200 border-violet-900/20" : msg.isVoice ? "bg-gradient-to-br from-cyan-950/20 to-zinc-950/50 text-cyan-300/80 border-cyan-800/10 italic" : "bg-cyan-950/30 text-zinc-100 border-cyan-800/20")}>
-                  {msg.text}{msg.isLive && <motion.span className="inline-block ml-1 h-3 w-1.5 bg-violet-400" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.8, repeat: Infinity }} />}
-                </div>
-              </motion.div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-
-          <div className="bg-zinc-950/80 border-t border-zinc-900 p-4 backdrop-blur-md">
-            <form onSubmit={handleSendText} className="flex gap-2">
-              <Input value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder={!connected ? "Establish connection first..." : isAiSpeaking ? "Wait for the detective to finish..." : "Type your alibi here..."} disabled={!connected || isAiSpeaking} className="bg-black/50 border-zinc-850 text-white placeholder:text-zinc-600 focus-visible:ring-violet-600/30 font-sans" />
-              <Button type="submit" disabled={!connected || !textInput.trim() || isAiSpeaking} className="bg-violet-600 hover:bg-violet-500 text-white px-5"><Send className="size-4" /></Button>
-            </form>
-            <div className="mt-3 flex items-center justify-between border-t border-zinc-900 pt-3">
-              <div className="flex items-center gap-2">
-                <Button variant={muted ? "outline" : "destructive"} size="sm" onClick={() => setMuted(!muted)} disabled={!connected} className={cn("h-9 px-3 text-xs gap-1.5 font-bold transition-all", muted ? "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800" : "bg-red-950/30 border-red-500/20 text-red-400 hover:bg-red-900/30")}>{muted ? <MicOff className="size-3.5" /> : <Mic className="size-3.5" />}<span>{muted ? "Unmute" : "Mute"}</span></Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={connected ? disconnect : connect}
-                  disabled={isConnecting}
-                  className={cn(
-                    "h-9 px-3 text-xs gap-1.5 font-bold border transition-all",
-                    connected
-                      ? "border-emerald-500/20 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-900/20"
-                      : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800"
-                  )}
-                >
-                  {isConnecting ? (
-                    <div className="size-3.5 rounded-full border border-zinc-650 border-t-zinc-400 animate-spin" />
-                  ) : connected ? (
-                    <Pause className="size-3.5" />
-                  ) : (
-                    <Play className="size-3.5" />
-                  )}
-                  <span>{isConnecting ? "Connecting..." : connected ? "Disconnect" : "Connect"}</span>
-                </Button>
-              </div>
-              <span className={cn("text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5", connectionError ? "text-red-400" : !connected ? "text-zinc-600" : isAiSpeaking ? "text-violet-400" : muted ? "text-orange-400" : "text-emerald-400")}>
-                {connectionError ? (
-                  <div className="flex flex-col items-end gap-0.5 max-w-[240px] text-right">
-                    <span className="text-[9px] text-red-500 font-medium normal-case line-clamp-2 leading-tight select-text mb-0.5">
-                      {connectionError}
-                    </span>
-                    <span onClick={triggerRetry} className="cursor-pointer underline text-[10px] text-red-450 font-black tracking-widest uppercase flex items-center gap-1">
-                      <ShieldAlert className="size-3.5" />
-                      Retry Connection
-                    </span>
-                  </div>
-                ) : !connected ? (
-                  <><Info className="size-3.5" /><span>Offline</span></>
-                ) : isAiSpeaking ? (
-                  <><span className="size-1.5 rounded-full bg-violet-400 animate-ping" /><span>Detective Replies</span></>
-                ) : muted ? (
-                  <><MicOff className="size-3.5" /><span>Muted</span></>
-                ) : (
-                  <><span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" /><span>Active Mic</span></>
-                )}
-              </span>
-            </div>
-          </div>
+          {/* Core Interactive Orb */}
+          <motion.div
+            animate={{
+              scale: isConnecting ? 0.95 : connected && isAiSpeaking ? 1 + volume * 0.9 : connected && !muted ? [1, 1.04, 1] : 0.9,
+              borderRadius: connected && isAiSpeaking 
+                ? ["50% 50% 45% 55% / 50% 45% 55% 50%", "45% 55% 50% 50% / 45% 50% 50% 55%", "50% 50% 45% 55% / 50% 45% 55% 50%"]
+                : ["50%", "50%", "50%"]
+            }}
+            transition={{ duration: connected && isAiSpeaking ? 0.25 : 3, repeat: Infinity, ease: "easeInOut" }}
+            className={cn("absolute size-40 bg-gradient-to-tr transition-all duration-700 border border-white/5", getOrbGradients())}
+          />
         </div>
 
-        {/* Right Side HUD Panel */}
-        <GameHud
-          suspicion={suspicion}
-          mood={getDetectiveMood()}
-          score={currentScore}
-          isAiSpeaking={isAiSpeaking}
-          connected={connected}
-          volume={volume}
-          muted={muted}
-        />
-      </main>
+        {/* Status Text Under Orb */}
+        <div className="text-center mt-6 space-y-2">
+          <p className={cn("text-xs font-bold uppercase tracking-[0.2em] transition-all", isConnecting ? "text-amber-400 animate-pulse" : connectionError ? "text-red-500 animate-pulse" : connected && isAiSpeaking ? "text-violet-400" : connected ? "text-cyan-400 animate-pulse" : "text-zinc-650")}>
+            {getStatusText()}
+          </p>
+          <p className="text-[10px] text-zinc-600 max-w-xs font-sans tracking-wide leading-relaxed select-none">
+            {connectionError ? "Google Live connection aborted." : connected ? "Microphone active. Speak your alibi clearly to defend yourself." : "Establish transmission connection to synchronize the uplink."}
+          </p>
+        </div>
+      </div>
+
+      {/* Floating Pill Action Dock */}
+      <div className="relative z-10 w-full flex flex-col items-center gap-4 border-t border-zinc-900/60 pt-4">
+        <AnimatePresence>
+          {connectionError && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex flex-col items-center gap-1.5 text-center">
+              <span className="text-[9px] text-red-550 max-w-md leading-normal select-text flex items-center gap-1.5"><ShieldAlert className="size-3.5" />{connectionError}</span>
+              <button onClick={triggerRetry} className="flex items-center gap-1 text-[10px] text-red-400 font-bold uppercase underline hover:text-red-300 cursor-pointer">
+                <RefreshCw className="size-3" />
+                <span>Retry Sat-Link</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="flex items-center gap-4 bg-zinc-950/70 border border-zinc-900 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl">
+          {/* Mute button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={!connected}
+            onClick={() => setMuted(!muted)}
+            className={cn("size-10 rounded-full border transition-all cursor-pointer", muted ? "bg-amber-950/30 border-amber-500/30 text-amber-500 hover:bg-amber-900/30" : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800")}
+          >
+            {muted ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+          </Button>
+
+          {/* Connect / Disconnect Action */}
+          <Button
+            variant="destructive"
+            size="icon"
+            disabled={isConnecting}
+            onClick={connected ? disconnect : connect}
+            className={cn("size-12 rounded-full shadow-lg transition-all cursor-pointer", connected ? "bg-red-650 hover:bg-red-750" : "bg-cyan-600 hover:bg-cyan-700 text-black")}
+          >
+            {isConnecting ? (
+              <RefreshCw className="size-5 animate-spin text-black" />
+            ) : connected ? (
+              <PhoneOff className="size-5" />
+            ) : (
+              <Wifi className="size-5 text-black" />
+            )}
+          </Button>
+        </div>
+      </div>
     </motion.div>
   );
 }
