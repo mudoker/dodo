@@ -228,24 +228,35 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
 		}
 	}
 
-	/**
-	 * send realtimeInput, this is base64 chunks of "audio/pcm" and/or "image/jpg"
-	 */
 	sendRealtimeInput(chunks: GenerativeContentBlob[]) {
 		let hasAudio = false;
 		let hasVideo = false;
+
 		for (let i = 0; i < chunks.length; i++) {
 			const ch = chunks[i];
 			if (ch.mimeType.includes("audio")) {
 				hasAudio = true;
-			}
-			if (ch.mimeType.includes("image")) {
+				this._sendDirect({
+					realtimeInput: {
+						audio: {
+							mimeType: ch.mimeType,
+							data: ch.data,
+						},
+					},
+				});
+			} else if (ch.mimeType.includes("image") || ch.mimeType.includes("video")) {
 				hasVideo = true;
-			}
-			if (hasAudio && hasVideo) {
-				break;
+				this._sendDirect({
+					realtimeInput: {
+						video: {
+							mimeType: ch.mimeType,
+							data: ch.data,
+						},
+					},
+				});
 			}
 		}
+
 		const message =
 			hasAudio && hasVideo
 				? "audio + video"
@@ -255,12 +266,6 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
 						? "video"
 						: "unknown";
 
-		const data: RealtimeInputMessage = {
-			realtimeInput: {
-				mediaChunks: chunks,
-			},
-		};
-		this._sendDirect(data);
 		this.log(`client.realtimeInput`, message);
 	}
 

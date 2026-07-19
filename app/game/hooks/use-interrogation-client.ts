@@ -29,7 +29,7 @@ export function useInterrogationClient({
 
   useEffect(() => { transcriptRef.current = currentTranscript; }, [currentTranscript]);
 
-  const isConfigReady = config.model === "models/gemini-2.0-flash-live-001" && config.systemInstruction?.parts?.[0]?.text?.includes("Grimstone");
+  const isConfigReady = Boolean(config.model && config.systemInstruction?.parts?.[0]?.text?.includes("Grimstone"));
 
   // Automatic connection on mount when config is ready
   useEffect(() => {
@@ -46,7 +46,7 @@ export function useInterrogationClient({
           setIsConnecting(false);
           hasStartedRef.current = false; // allow manual retry
         }
-      }, 500);
+      }, 150);
       return () => clearTimeout(timer);
     }
   }, [connect, isConfigReady, connected, isConnecting, connectionError]);
@@ -162,7 +162,7 @@ export function useInterrogationClient({
           setConnectionError("Failed to initiate interrogation");
           setIsAiSpeaking(false);
         }
-      }, 1000);
+      }, 250);
       return () => clearTimeout(timer);
     }
   }, [connected, crime, client]);

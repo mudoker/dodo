@@ -11,7 +11,15 @@ import { WelcomeScreen } from "./components/welcome-screen";
 import { CRIMES, DETECTIVE_SYSTEM_PROMPT } from "./constants";
 import { GamePhase } from "./types";
 
-function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
+function GameApp({
+  onChangeKey,
+  selectedModel,
+  setSelectedModel,
+}: {
+  onChangeKey: () => void;
+  selectedModel: string;
+  setSelectedModel: (m: string) => void;
+}) {
   const [phase, setPhase] = useState<GamePhase>("welcome");
   const [crime, setCrime] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -38,10 +46,12 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
     setTimerStarted(false);
 
     const gameConfig = {
-      model: "models/gemini-2.0-flash",
+      model: selectedModel,
       systemInstruction: { parts: [{ text: DETECTIVE_SYSTEM_PROMPT }] },
       generationConfig: {
         responseModalities: "audio" as const,
+        maxOutputTokens: 80,
+        temperature: 0.7,
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } },
         },
@@ -49,7 +59,7 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
     };
     setConfig(gameConfig);
     setPhase("playing");
-  }, [setConfig]);
+  }, [setConfig, selectedModel]);
 
   // Stopwatch ticking
   useEffect(() => {
@@ -95,6 +105,8 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
             onStart={startGame}
             hasKey={true}
             onChangeKey={onChangeKey}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
           />
         )}
         {phase === "playing" && (
@@ -133,6 +145,7 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
 export default function GamePage() {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("models/gemini-2.5-flash-native-audio-latest");
 
   useEffect(() => {
     const stored = localStorage.getItem("dodo_gemini_api_key");
@@ -169,7 +182,11 @@ export default function GamePage() {
 
   return (
     <LiveAPIProvider url={uri} apiKey={apiKey}>
-      <GameApp onChangeKey={handleClearApiKey} />
+      <GameApp
+        onChangeKey={handleClearApiKey}
+        selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
+      />
     </LiveAPIProvider>
   );
 }
