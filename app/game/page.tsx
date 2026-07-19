@@ -377,6 +377,78 @@ function FloatingBlob({
   );
 }
 
+// ==================== EQUALIZER WAVEFORM ====================
+
+function EqualizerWaveform({ isSpeaking, isActive }: { isSpeaking: boolean; isActive: boolean }) {
+  const bars = [...Array(10)];
+  return (
+    <div className="flex items-end gap-1.5 h-10 px-2 justify-center w-full">
+      {bars.map((_, i) => {
+        const heightMin = 8;
+        const heightMax = isSpeaking ? 34 : isActive ? 16 : 8;
+        const duration = 0.5 + (i % 3) * 0.15;
+        
+        return (
+          <motion.div
+            key={i}
+            className={cn(
+              "w-1.5 rounded-full bg-gradient-to-t",
+              isSpeaking
+                ? "from-violet-600 to-pink-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]"
+                : isActive
+                  ? "from-cyan-500 to-emerald-400 shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+                  : "from-zinc-800 to-zinc-700"
+            )}
+            initial={{ height: heightMin }}
+            animate={{
+              height: [heightMin, heightMax, heightMin],
+            }}
+            transition={{
+              duration: duration,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * 0.05,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ==================== ANIMATED COUNTER ====================
+
+function Counter({ value }: { value: number }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = value;
+    if (start === end) return;
+
+    const duration = 1.2;
+    const totalFrames = Math.round(duration * 60);
+    let frame = 0;
+
+    const counterInterval = setInterval(() => {
+      frame++;
+      const progress = frame / totalFrames;
+      const current = Math.round(end * (progress * (2 - progress)));
+      
+      setCount(current);
+
+      if (frame >= totalFrames) {
+        setCount(end);
+        clearInterval(counterInterval);
+      }
+    }, 1000 / 60);
+
+    return () => clearInterval(counterInterval);
+  }, [value]);
+
+  return <span>{count.toLocaleString()}</span>;
+}
+
 // ==================== TIMER COMPONENT ====================
 
 function InterrogationTimer({ elapsedTime }: { elapsedTime: number }) {
@@ -545,25 +617,19 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
 
         {/* Description */}
         <motion.div
-          className="mb-10 max-w-md space-y-4"
-          initial={{ opacity: 0, y: 10 }}
+          className="mb-8 max-w-sm space-y-2 text-zinc-400"
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.6, type: "spring", stiffness: 100 }}
         >
-          <p className="text-base text-zinc-300">
-            Accused of a crime you{" "}
-            <span className="font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.3)]">
-              did not commit
-            </span>.
+          <p className="text-base text-zinc-200">
+            Accused of a crime you <span className="font-bold text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.2)]">did not commit</span>.
           </p>
-          <p className="text-sm text-zinc-400 leading-relaxed">
-            Detective Grimstone is toxic, hostile, and utterly convinced you're guilty.
-            Defend yourself using <span className="font-semibold text-cyan-400">voice chat</span> or{" "}
-            <span className="font-semibold text-cyan-400">text input</span>. Present solid arguments to lower his
-            suspicion before he loses patience and sends you to jail!
+          <p className="text-sm">
+            Detective Grimstone is hostile and convinced you are guilty.
           </p>
-          <p className="text-xs text-zinc-500 italic">
-            Outsmart the AI or buy soap on a rope. Your move.
+          <p className="text-xs text-zinc-500 italic mt-3">
+            Defend yourself using voice or text. Lower his suspicion to 0% before he locks you up.
           </p>
         </motion.div>
 
@@ -571,7 +637,7 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 0.8, type: "spring", stiffness: 100 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="relative"
@@ -602,26 +668,26 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="mt-12 grid grid-cols-3 gap-6 w-full"
+          transition={{ delay: 0.9 }}
+          className="mt-12 grid grid-cols-3 gap-5 w-full"
         >
           {[
             {
               icon: MessageSquare,
-              label: "Voice & Text",
-              desc: "Argue using mic or type your alibis",
+              label: "Mic & Keyboard",
+              desc: "Defend by voice or typing",
               color: "from-blue-500/10 to-violet-600/5",
             },
             {
               icon: Gauge,
-              label: "Impatience & Suspicion",
-              desc: "Convince him to lower suspicion",
+              label: "Suspicion Meter",
+              desc: "Keep suspicion below 100%",
               color: "from-red-500/10 to-orange-600/5",
             },
             {
               icon: Trophy,
-              label: "Clear Your Name",
-              desc: "Get him to dismiss the case",
+              label: "Dismiss Charges",
+              desc: "Outsmart the toxic detective",
               color: "from-emerald-500/10 to-green-600/5",
             },
           ].map(({ icon: Icon, label, desc, color }, index) => (
@@ -630,14 +696,14 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
               className="group flex flex-col items-center gap-3 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 backdrop-blur-sm"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.1 + index * 0.1 }}
-              whileHover={{ y: -3, borderColor: "rgba(255,255,255,0.05)" }}
+              transition={{ delay: 1.0 + index * 0.1, type: "spring", stiffness: 120, damping: 15 }}
+              whileHover={{ y: -4, scale: 1.02, borderColor: "rgba(255,255,255,0.08)" }}
             >
               <div className={cn(
                 "relative flex size-12 items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-br",
                 color
               )}>
-                <Icon className="size-6 text-zinc-400 group-hover:text-white transition-colors" />
+                <Icon className="size-6 text-zinc-400 group-hover:text-white transition-colors animate-pulse" />
               </div>
               <p className="text-xs font-bold text-zinc-300">{label}</p>
               <p className="text-[10px] text-zinc-500 text-center leading-normal">{desc}</p>
@@ -823,7 +889,9 @@ function ResultScreen({
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div className="bg-zinc-950/50 border border-zinc-800/50 p-3.5 rounded-xl">
             <span className="block text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mb-1">Final Score</span>
-            <span className="text-xl font-bold text-cyan-400">{score.toLocaleString()}</span>
+            <span className="text-xl font-bold text-cyan-400">
+              <Counter value={score} />
+            </span>
           </div>
           <div className="bg-zinc-950/50 border border-zinc-800/50 p-3.5 rounded-xl">
             <span className="block text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mb-1">Interrogation Time</span>
@@ -1299,8 +1367,9 @@ function GameScreen({
             {chatHistory.map((msg) => (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 18 }}
                 className={cn(
                   "flex w-full flex-col",
                   msg.sender === "detective" ? "items-start" : "items-end"
@@ -1447,7 +1516,12 @@ function GameScreen({
           className="w-full lg:w-72 flex flex-col gap-4"
         >
           {/* Suspicion Level Gauge */}
-          <div className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm">
+          <motion.div
+            key={suspicion}
+            animate={{ scale: [1, 1.02, 1] }}
+            transition={{ duration: 0.3 }}
+            className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm"
+          >
             <div className="mb-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Gauge className="size-4.5 text-zinc-400" />
@@ -1482,10 +1556,10 @@ function GameScreen({
               <span>Innocent</span>
               <span>Jail Time</span>
             </div>
-          </div>
+          </motion.div>
 
           {/* Interrogation Room Status Card */}
-          <div className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm space-y-3.5">
+          <div className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">Case Report</h3>
 
             <div className="space-y-2">
@@ -1502,15 +1576,8 @@ function GameScreen({
                 </span>
               </div>
 
-              <div className="flex items-center justify-between text-xs border-b border-zinc-900/50 pb-2">
-                <span className="text-zinc-500">Accuser Impatience</span>
-                <span className="font-semibold text-zinc-300 font-mono">
-                  {suspicion >= 85 ? "CRITICAL" : suspicion >= 60 ? "HIGH" : "MODERATE"}
-                </span>
-              </div>
-
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-500">Credibility Rating</span>
+                <span className="text-zinc-500">Score Rating</span>
                 <span className="font-bold text-cyan-400 font-mono">
                   {currentScore.toLocaleString()} pts
                 </span>
@@ -1519,18 +1586,25 @@ function GameScreen({
           </div>
 
           {/* Smaller interactive Voice waveform card */}
-          <div className="flex-1 rounded-xl border border-zinc-900 bg-zinc-950/10 p-5 flex flex-col justify-center items-center backdrop-blur-sm overflow-hidden min-h-[160px]">
-            <div className="w-full flex items-center gap-2 mb-3 self-start">
-              <span className="size-2 rounded-full bg-cyan-500/80 animate-pulse" />
-              <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Lie Detector Feeds</h3>
+          <div className="flex-1 rounded-xl border border-zinc-900 bg-zinc-950/10 p-5 flex flex-col justify-between items-center backdrop-blur-sm overflow-hidden min-h-[180px]">
+            <div className="w-full flex items-center gap-2 mb-2 self-start">
+              <span className={cn(
+                "size-2 rounded-full bg-cyan-500/85",
+                connected && "animate-pulse"
+              )} />
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Voice Analyzer</h3>
             </div>
-            <div className="scale-50 opacity-60">
+            
+            <EqualizerWaveform isSpeaking={isAiSpeaking} isActive={connected && !muted} />
+            
+            <div className="scale-35 opacity-30 -my-6">
               <FloatingBlob
                 isActive={connected}
                 volume={volume}
                 isSpeaking={isAiSpeaking}
               />
             </div>
+          </div>
           </div>
         </motion.div>
       </main>
