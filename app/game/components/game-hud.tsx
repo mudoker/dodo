@@ -24,7 +24,7 @@ export function GameHud({
 }) {
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full lg:w-72 flex flex-col gap-4 z-20">
-      <DetectiveProfile mood={mood} suspicion={suspicion} isSpeaking={isAiSpeaking} />
+      <DetectiveProfile mood={mood} suspicion={suspicion} isSpeaking={isAiSpeaking} connected={connected} />
       
       {/* Suspicion Level Gauge */}
       <motion.div key={suspicion} animate={{ scale: [1, 1.02, 1] }} transition={{ duration: 0.3 }} className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm shadow-xl">

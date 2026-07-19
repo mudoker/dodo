@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 
-export function DetectiveProfile({ mood, suspicion, isSpeaking }: { mood: string; suspicion: number; isSpeaking: boolean }) {
+export function DetectiveProfile({ mood, suspicion, isSpeaking, connected }: { mood: string; suspicion: number; isSpeaking: boolean; connected: boolean }) {
   const eyeColor = suspicion >= 85 ? "#ef4444" : suspicion >= 65 ? "#f97316" : suspicion >= 45 ? "#fbbf24" : "#a855f7";
 
   return (
@@ -11,11 +11,19 @@ export function DetectiveProfile({ mood, suspicion, isSpeaking }: { mood: string
       <div className="absolute inset-0 bg-gradient-to-t from-red-950/10 via-transparent to-violet-950/10 pointer-events-none" />
       
       <motion.div
-        animate={isSpeaking ? {
-          y: [0, -1, 1, 0],
-          scale: [1, 1.02, 0.98, 1]
-        } : {}}
-        transition={{ duration: 0.4, repeat: Infinity }}
+        animate={isSpeaking && connected ? "speaking" : "idle"}
+        variants={{
+          speaking: {
+            y: [0, -1, 1, 0],
+            scale: [1, 1.02, 0.98, 1],
+            transition: { duration: 0.4, repeat: Infinity }
+          },
+          idle: {
+            y: 0,
+            scale: 1,
+            transition: { duration: 0.25 }
+          }
+        }}
         className="w-24 h-24 relative flex items-center justify-center text-zinc-800"
       >
         <svg viewBox="0 0 100 100" className="size-full fill-zinc-800 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
@@ -47,7 +55,7 @@ export function DetectiveProfile({ mood, suspicion, isSpeaking }: { mood: string
         </div>
       </motion.div>
 
-      {isSpeaking && (
+      {isSpeaking && connected && (
         <div className="absolute inset-x-0 bottom-3.5 flex items-center justify-center gap-1 z-20">
           {[...Array(6)].map((_, i) => (
             <motion.div
@@ -61,12 +69,14 @@ export function DetectiveProfile({ mood, suspicion, isSpeaking }: { mood: string
       )}
 
       <div className="absolute top-2.5 left-3 flex items-center gap-1.5 z-20">
-        <span className="size-1.5 rounded-full bg-red-600 animate-ping" />
-        <span className="text-[8px] uppercase tracking-wider text-red-500 font-extrabold">REC FEED</span>
+        <span className={`size-1.5 rounded-full ${connected ? "bg-red-650 animate-ping" : "bg-zinc-700"}`} />
+        <span className={`text-[8px] uppercase tracking-wider font-extrabold ${connected ? "text-red-500" : "text-zinc-600"}`}>
+          {connected ? "REC FEED" : "FEED OFFLINE"}
+        </span>
       </div>
 
       <div className="absolute top-2.5 right-3 z-20">
-        <span className="text-[8px] uppercase tracking-wider text-zinc-600 font-mono">CAM_01_GRIM</span>
+        <span className="text-[8px] uppercase tracking-wider text-zinc-650 font-mono">CAM_01_GRIM</span>
       </div>
 
       <div className="absolute bottom-2.5 left-3 z-20">
