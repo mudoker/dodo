@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { AlertTriangle, Gauge, MessageSquare, Mic, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { FloatingBlob } from "./floating-blob";
 
 const PARTICLE_POSITIONS = [
   { left: 5, top: 10 }, { left: 15, top: 80 }, { left: 25, top: 30 },
@@ -13,7 +14,15 @@ const PARTICLE_POSITIONS = [
   { left: 95, top: 50 }, { left: 10, top: 45 }, { left: 30, top: 85 },
 ];
 
-export function WelcomeScreen({ onStart }: { onStart: () => void }) {
+export function WelcomeScreen({
+  onStart,
+  hasKey,
+  onChangeKey,
+}: {
+  onStart: () => void;
+  hasKey: boolean;
+  onChangeKey: () => void;
+}) {
   const [terminalLog, setTerminalLog] = useState<string[]>([]);
   
   // Typing simulation on mount
@@ -48,19 +57,17 @@ export function WelcomeScreen({ onStart }: { onStart: () => void }) {
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 bg-black text-white"
     >
       {/* Background Orbs & Grid */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-black to-zinc-950" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] opacity-15" />
-        <motion.div
-          className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(220, 38, 38, 0.06) 0%, transparent 70%)", filter: "blur(50px)" }}
-          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center opacity-30 blur-2xl">
+        <FloatingBlob
+          isActive={false}
+          volume={0}
+          isSpeaking={false}
         />
       </div>
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-black/60 backdrop-blur-[2px]" />
 
       {/* Floating particles */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden z-10">
         {PARTICLE_POSITIONS.map((pos, i) => (
           <motion.div
             key={i}
@@ -76,7 +83,7 @@ export function WelcomeScreen({ onStart }: { onStart: () => void }) {
         initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.6 }}
-        className="relative z-10 flex max-w-xl flex-col items-center text-center"
+        className="relative z-20 flex max-w-xl flex-col items-center text-center"
       >
         {/* Logo Card */}
         <motion.div
@@ -125,36 +132,49 @@ export function WelcomeScreen({ onStart }: { onStart: () => void }) {
           {terminalLog.map((log, i) => (
             <div key={i} className="flex gap-2">
               <span className="text-red-500 font-bold">&gt;</span>
-              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.1 }}>{log}</motion.span>
+              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.1 }}>
+                {log}
+                {i === terminalLog.length - 1 && terminalLog.length < 6 && (
+                  <span className="inline-block w-1.5 h-3 bg-red-500/80 ml-1 animate-pulse" />
+                )}
+              </motion.span>
             </div>
           ))}
-          {terminalLog.length < 6 && (
-            <div className="flex gap-2 animate-pulse">
-              <span className="text-red-500 font-bold">&gt;</span>
-              <span className="w-2 h-3.5 bg-red-500/70" />
-            </div>
-          )}
         </motion.div>
 
         {/* Start Action */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, type: "spring", stiffness: 100 }}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
-          className="relative mb-10"
-        >
-          <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-red-600 via-orange-500 to-red-600 opacity-50 blur-md" />
-          <Button
-            onClick={onStart}
-            size="lg"
-            className="relative h-14 gap-3 bg-gradient-to-r from-red-600 to-red-700 px-8 text-base font-bold shadow-2xl transition-all hover:from-red-500 hover:to-red-600 text-white"
+        <div className="flex flex-col items-center mb-10 relative">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, type: "spring", stiffness: 100 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            className="relative"
           >
-            <Mic className="size-4 animate-pulse" />
-            <span>Enter Interrogation Chamber</span>
-          </Button>
-        </motion.div>
+            <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-red-600 via-orange-500 to-red-600 opacity-50 blur-md" />
+            <Button
+              onClick={onStart}
+              size="lg"
+              className="relative h-14 gap-3 bg-gradient-to-r from-red-600 to-red-700 px-8 text-base font-bold shadow-2xl transition-all hover:from-red-500 hover:to-red-600 text-white"
+            >
+              <Mic className="size-4 animate-pulse" />
+              <span>Enter Interrogation Chamber</span>
+            </Button>
+          </motion.div>
+          
+          {hasKey && (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.9 }}
+              onClick={onChangeKey}
+              className="mt-4 text-[10px] text-zinc-500 hover:text-red-400 font-mono transition-colors uppercase tracking-widest font-semibold cursor-pointer underline underline-offset-4"
+            >
+              Reset Stored API Key
+            </motion.button>
+          )}
+        </div>
 
         {/* Quick Instructions grid */}
         <div className="grid grid-cols-3 gap-4 w-full">

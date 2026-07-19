@@ -10,7 +10,7 @@ import { WelcomeScreen } from "./components/welcome-screen";
 import { CRIMES, DETECTIVE_SYSTEM_PROMPT } from "./constants";
 import { GamePhase } from "./types";
 
-function GameApp() {
+function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
   const [phase, setPhase] = useState<GamePhase>("welcome");
   const [crime, setCrime] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -79,7 +79,14 @@ function GameApp() {
   return (
     <div className="min-h-screen bg-black text-white selection:bg-violet-950 selection:text-white">
       <AnimatePresence mode="wait">
-        {phase === "welcome" && <WelcomeScreen key="welcome" onStart={startGame} />}
+        {phase === "welcome" && (
+          <WelcomeScreen
+            key="welcome"
+            onStart={startGame}
+            hasKey={true}
+            onChangeKey={onChangeKey}
+          />
+        )}
         {phase === "playing" && (
           <GameScreen
             key="playing"
@@ -92,6 +99,7 @@ function GameApp() {
             onGoodArgument={handleGoodArgument}
             onIncreaseImpatience={handleIncreaseImpatience}
             timerStarted={timerStarted}
+            onChangeKey={onChangeKey}
           />
         )}
       </AnimatePresence>
@@ -114,17 +122,44 @@ function GameApp() {
 
 export default function GamePage() {
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("dodo_gemini_api_key");
+    if (stored) {
+      setApiKey(stored);
+    }
+    setIsLoaded(true);
+  }, []);
+
+  const handleApiKeySet = (key: string) => {
+    localStorage.setItem("dodo_gemini_api_key", key);
+    setApiKey(key);
+  };
+
+  const handleClearApiKey = () => {
+    localStorage.removeItem("dodo_gemini_api_key");
+    setApiKey(null);
+  };
 
   const host = "generativelanguage.googleapis.com";
   const uri = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent`;
 
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center font-mono text-zinc-500 text-xs animate-pulse">
+        INITIALIZING DOSSIER UPLINK...
+      </div>
+    );
+  }
+
   if (!apiKey) {
-    return <ApiKeyModal onApiKeySet={setApiKey} />;
+    return <ApiKeyModal onApiKeySet={handleApiKeySet} />;
   }
 
   return (
     <LiveAPIProvider url={uri} apiKey={apiKey}>
-      <GameApp />
+      <GameApp onChangeKey={handleClearApiKey} />
     </LiveAPIProvider>
   );
 }
