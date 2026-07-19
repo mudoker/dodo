@@ -26,6 +26,12 @@ import {
   Trophy,
   Volume2,
   Zap,
+  Send,
+  MessageSquare,
+  Gauge,
+  Sparkles,
+  ShieldAlert,
+  Info,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -34,7 +40,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const CRIMES = [
   // Tech crimes - absolutely unhinged
   "Deleting the production database and blaming it on 'a ghost in the machine'",
-  "Pushing code to production with console.log('HELP ME' repeated 10,000 times",
+  "Pushing code to production with console.log('HELP ME' repeated 10,000 times)",
   "Using Comic Sans, Papyrus, AND Wingdings in the same presentation",
   "Replying all to a 500-person email with 'Who asked?'",
   "Marking 847 Jira tickets as 'Done' while on vacation in the Bahamas",
@@ -148,9 +154,17 @@ LOSE CONDITION (when suspect struggles - be EXTREMELY SMUG, AGGRESSIVE, TOXIC, a
 
 type GamePhase = "welcome" | "playing" | "won" | "lost";
 
+type ChatMessage = {
+  id: string;
+  sender: "detective" | "user";
+  text: string;
+  timestamp: Date;
+  isVoice?: boolean;
+  isLive?: boolean;
+};
+
 // ==================== FLOATING BLOB COMPONENT ====================
 
-// Fixed particle positions for blob
 const BLOB_PARTICLES = [
   { left: 35, top: 30 }, { left: 60, top: 35 }, { left: 45, top: 65 },
   { left: 70, top: 55 }, { left: 30, top: 50 }, { left: 55, top: 40 },
@@ -184,13 +198,11 @@ function FloatingBlob({
   );
   const ringScale = useTransform(amplitudeSpring, (v) => 1 + v * 0.3);
 
-  // Neon pastel color hues - cyan, purple, pink
-  const huePrimary = useTransform(amplitudeSpring, (v) => 280 + v * 40); // Purple to pink
-  const hueSecondary = useTransform(amplitudeSpring, (v) => 180 + v * 30); // Cyan to teal
-  const hueTertiary = useTransform(amplitudeSpring, (v) => 320 + v * 30); // Pink to magenta
+  const huePrimary = useTransform(amplitudeSpring, (v) => 280 + v * 40);
+  const hueSecondary = useTransform(amplitudeSpring, (v) => 180 + v * 30);
+  const hueTertiary = useTransform(amplitudeSpring, (v) => 320 + v * 30);
 
   const blobGradient = useMotionTemplate`radial-gradient(circle at 30% 25%, hsl(${huePrimary} 70% 70% / 0.8), transparent 55%), radial-gradient(circle at 70% 30%, hsl(${hueSecondary} 65% 65% / 0.7), transparent 50%), radial-gradient(circle at 50% 75%, hsl(${hueTertiary} 60% 65% / 0.65), transparent 55%)`;
-
   const coreGradient = useMotionTemplate`radial-gradient(circle at 50% 50%, hsl(${hueSecondary} 80% 85% / 0.5), transparent 55%)`;
 
   useEffect(() => {
@@ -205,7 +217,7 @@ function FloatingBlob({
     <div className="relative flex items-center justify-center">
       {/* Outermost ring */}
       <motion.div
-        className="absolute aspect-square w-[700px] rounded-full border border-violet-400/15"
+        className="absolute aspect-square w-[380px] rounded-full border border-violet-400/15"
         style={{ scale: ringScale, filter: "blur(2px)" }}
         animate={{
           rotate: [0, 360],
@@ -217,15 +229,15 @@ function FloatingBlob({
         }}
       />
 
-      {/* Outer atmospheric glow - neon pastel, extra wide and blurry */}
+      {/* Outer atmospheric glow - neon pastel */}
       <motion.div
-        className="absolute aspect-square w-[850px] rounded-full"
+        className="absolute aspect-square w-[450px] rounded-full"
         style={{
           scale: outerScale,
           opacity: outerOpacity,
           background:
-            "radial-gradient(circle, rgba(167, 139, 250, 0.4) 0%, rgba(96, 165, 250, 0.3) 30%, rgba(244, 114, 182, 0.2) 50%, rgba(129, 230, 217, 0.1) 70%, transparent 85%)",
-          filter: "blur(80px)",
+            "radial-gradient(circle, rgba(167, 139, 250, 0.25) 0%, rgba(96, 165, 250, 0.2) 30%, rgba(244, 114, 182, 0.15) 50%, transparent 80%)",
+          filter: "blur(40px)",
         }}
         animate={{
           rotate: [0, 360],
@@ -237,34 +249,15 @@ function FloatingBlob({
         }}
       />
 
-      {/* Extra ambient glow layer */}
+      {/* Secondary glow ring */}
       <motion.div
-        className="absolute aspect-square w-[750px] rounded-full"
+        className="absolute aspect-square w-[320px] rounded-full"
         style={{
-          background:
-            "radial-gradient(circle, rgba(129, 230, 217, 0.25) 0%, rgba(167, 139, 250, 0.2) 40%, transparent 70%)",
-          filter: "blur(100px)",
+          opacity: innerGlow,
+          filter: "blur(30px)",
         }}
         animate={{
           scale: [1, 1.1, 1],
-          rotate: [0, 180, 360],
-        }}
-        transition={{
-          duration: 30,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-
-      {/* Secondary glow ring */}
-      <motion.div
-        className="absolute aspect-square w-[600px] rounded-full"
-        style={{
-          opacity: innerGlow,
-          filter: "blur(60px)",
-        }}
-        animate={{
-          scale: [1, 1.15, 1],
           rotate: [0, -180, -360],
         }}
         transition={{
@@ -273,32 +266,32 @@ function FloatingBlob({
           ease: "easeInOut",
         }}
       >
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-400/50 via-cyan-400/40 to-pink-400/35" />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500/30 via-cyan-400/25 to-pink-500/20" />
       </motion.div>
 
       {/* Pulsing rings when speaking */}
       {isSpeaking && (
         <>
           <motion.div
-            className="absolute aspect-square w-[450px] rounded-full border-2 border-cyan-400/30"
-            style={{ filter: "blur(3px)" }}
+            className="absolute aspect-square w-[240px] rounded-full border-2 border-cyan-400/20"
+            style={{ filter: "blur(2px)" }}
             initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 2.5, opacity: 0 }}
+            animate={{ scale: 2, opacity: 0 }}
             transition={{ duration: 2, repeat: Infinity }}
           />
           <motion.div
-            className="absolute aspect-square w-[450px] rounded-full border-2 border-violet-400/30"
-            style={{ filter: "blur(3px)" }}
+            className="absolute aspect-square w-[240px] rounded-full border-2 border-violet-400/20"
+            style={{ filter: "blur(2px)" }}
             initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 2.5, opacity: 0 }}
+            animate={{ scale: 2, opacity: 0 }}
             transition={{ duration: 2, repeat: Infinity, delay: 0.7 }}
           />
         </>
       )}
 
-      {/* Main blob - wider and blurrier */}
+      {/* Main blob */}
       <motion.div
-        className="relative aspect-square w-[450px]"
+        className="relative aspect-square w-[220px]"
         style={{
           scale: blobScale,
           rotate: blobRotate,
@@ -318,72 +311,58 @@ function FloatingBlob({
           ease: "easeInOut",
         }}
       >
-        {/* Blob gradient fill - neon pastel, extra blurry */}
         <motion.div
           className="absolute inset-0 rounded-[inherit]"
           style={{
             background: blobGradient,
-            filter: "blur(40px)",
+            filter: "blur(20px)",
           }}
         />
 
-        {/* Solid inner blob - soft pastel gradient, blurred */}
         <motion.div
           className="absolute inset-[5%] rounded-[inherit]"
           style={{
-            background: "radial-gradient(circle at 40% 35%, rgba(129, 230, 217, 0.85) 0%, rgba(167, 139, 250, 0.75) 45%, rgba(244, 114, 182, 0.65) 100%)",
-            filter: "blur(25px)",
-          }}
-        />
-
-        {/* Inner core glow - softer */}
-        <motion.div
-          className="absolute inset-[15%] rounded-[inherit]"
-          style={{
-            background: coreGradient,
-            filter: "blur(30px)",
-          }}
-        />
-
-        {/* Specular highlight - softer */}
-        <motion.div
-          className="absolute inset-0 rounded-[inherit]"
-          style={{
-            background:
-              "radial-gradient(ellipse at 35% 25%, rgba(255,255,255,0.4) 0%, transparent 50%)",
+            background: "radial-gradient(circle at 40% 35%, rgba(129, 230, 217, 0.75) 0%, rgba(167, 139, 250, 0.65) 45%, rgba(244, 114, 182, 0.55) 100%)",
             filter: "blur(15px)",
           }}
         />
 
-        {/* Hot spot - blurrier */}
         <motion.div
-          className="absolute left-[25%] top-[20%] h-16 w-24 rounded-full bg-white/30"
-          style={{ filter: "blur(20px)" }}
-          animate={{
-            opacity: [0.3, 0.5, 0.3],
+          className="absolute inset-[15%] rounded-[inherit]"
+          style={{
+            background: coreGradient,
+            filter: "blur(15px)",
           }}
-          transition={{ duration: 2, repeat: Infinity }}
+        />
+
+        <motion.div
+          className="absolute inset-0 rounded-[inherit]"
+          style={{
+            background:
+              "radial-gradient(ellipse at 35% 25%, rgba(255,255,255,0.35) 0%, transparent 50%)",
+            filter: "blur(10px)",
+          }}
         />
       </motion.div>
 
-      {/* Particle effects with fixed positions - pastel colors, blurred */}
+      {/* Particle effects */}
       <div className="pointer-events-none absolute inset-0">
         {BLOB_PARTICLES.map((pos, i) => (
           <motion.div
             key={`blob-p-${i}`}
-            className="absolute h-3 w-3 rounded-full"
+            className="absolute h-2 w-2 rounded-full"
             style={{
               left: `${pos.left}%`,
               top: `${pos.top}%`,
-              background: i % 3 === 0 ? "rgba(129, 230, 217, 0.7)" : i % 3 === 1 ? "rgba(167, 139, 250, 0.7)" : "rgba(244, 114, 182, 0.7)",
-              boxShadow: i % 3 === 0 ? "0 0 20px rgba(129, 230, 217, 0.5)" : i % 3 === 1 ? "0 0 20px rgba(167, 139, 250, 0.5)" : "0 0 20px rgba(244, 114, 182, 0.5)",
-              filter: "blur(4px)",
+              background: i % 3 === 0 ? "rgba(129, 230, 217, 0.6)" : i % 3 === 1 ? "rgba(167, 139, 250, 0.6)" : "rgba(244, 114, 182, 0.6)",
+              boxShadow: i % 3 === 0 ? "0 0 10px rgba(129, 230, 217, 0.4)" : i % 3 === 1 ? "0 0 10px rgba(167, 139, 250, 0.4)" : "0 0 10px rgba(244, 114, 182, 0.4)",
+              filter: "blur(2px)",
             }}
             animate={{
               opacity: [0.3, 0.8, 0.3],
-              scale: [0.6, 1.5, 0.6],
-              x: [0, (i % 2 === 0 ? 30 : -30), 0],
-              y: [0, (i % 2 === 0 ? -20 : 20), 0],
+              scale: [0.7, 1.3, 0.7],
+              x: [0, (i % 2 === 0 ? 15 : -15), 0],
+              y: [0, (i % 2 === 0 ? -10 : 10), 0],
             }}
             transition={{
               duration: 3 + (i * 0.3),
@@ -394,112 +373,33 @@ function FloatingBlob({
           />
         ))}
       </div>
-
-      {/* Orbiting particles - pastel neon, blurred */}
-      <motion.div
-        className="absolute aspect-square w-[500px]"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-      >
-        <div className="absolute left-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-cyan-300/70 shadow-[0_0_25px_rgba(103,232,249,0.6)]" style={{ filter: "blur(3px)" }} />
-        <div className="absolute right-0 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-violet-300/70 shadow-[0_0_20px_rgba(196,181,253,0.6)]" style={{ filter: "blur(3px)" }} />
-      </motion.div>
-
-      <motion.div
-        className="absolute aspect-square w-[580px]"
-        animate={{ rotate: -360 }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-      >
-        <div className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-pink-300/70 shadow-[0_0_20px_rgba(249,168,212,0.6)]" style={{ filter: "blur(3px)" }} />
-        <div className="absolute left-1/2 bottom-0 h-2 w-2 -translate-x-1/2 rounded-full bg-teal-300/70 shadow-[0_0_18px_rgba(94,234,212,0.6)]" style={{ filter: "blur(3px)" }} />
-      </motion.div>
     </div>
   );
 }
 
 // ==================== TIMER COMPONENT ====================
 
-function GameTimer({ timeRemaining }: { timeRemaining: number }) {
-  const percentage = (timeRemaining / 120) * 100;
-  const isLow = timeRemaining <= 15;
-  const isCritical = timeRemaining <= 5;
-
+function InterrogationTimer({ elapsedTime }: { elapsedTime: number }) {
   return (
-    <motion.div
-      className="flex items-center gap-4"
-      animate={isCritical ? { scale: [1, 1.05, 1] } : {}}
-      transition={{ duration: 0.5, repeat: isCritical ? Infinity : 0 }}
-    >
-      <div className="relative size-20">
-        <svg className="size-full -rotate-90">
-          <circle
-            cx="40"
-            cy="40"
-            r="34"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="5"
-            className="text-zinc-800"
-          />
-          <motion.circle
-            cx="40"
-            cy="40"
-            r="34"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="5"
-            strokeLinecap="round"
-            className={cn(
-              isCritical
-                ? "text-red-500"
-                : isLow
-                  ? "text-orange-500"
-                  : "text-emerald-500"
-            )}
-            strokeDasharray={214}
-            initial={{ strokeDashoffset: 0 }}
-            animate={{ strokeDashoffset: 214 - (percentage / 100) * 214 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Clock
-            className={cn(
-              "size-7",
-              isCritical
-                ? "text-red-500"
-                : isLow
-                  ? "text-orange-500"
-                  : "text-emerald-500"
-            )}
-          />
-        </div>
+    <div className="flex items-center gap-3">
+      <div className="relative flex size-12 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-950/20">
+        <Clock className="size-5 text-cyan-400 animate-pulse" />
       </div>
       <div className="flex flex-col">
-        <span
-          className={cn(
-            "font-mono text-4xl font-bold tracking-tight",
-            isCritical
-              ? "text-red-500"
-              : isLow
-                ? "text-orange-500"
-                : "text-zinc-100"
-          )}
-        >
-          {String(Math.floor(timeRemaining / 60)).padStart(2, "0")}:
-          {String(timeRemaining % 60).padStart(2, "0")}
+        <span className="font-mono text-2xl font-bold tracking-tight text-white leading-none">
+          {String(Math.floor(elapsedTime / 60)).padStart(2, "0")}:
+          {String(elapsedTime % 60).padStart(2, "0")}
         </span>
-        <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-          Time Remaining
+        <span className="text-[9px] uppercase tracking-widest text-cyan-400/70 font-semibold mt-1">
+          Interrogation Time
         </span>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 // ==================== WELCOME SCREEN ====================
 
-// Fixed particle positions to avoid hydration mismatch
 const PARTICLE_POSITIONS = [
   { left: 5, top: 10 }, { left: 15, top: 80 }, { left: 25, top: 30 },
   { left: 35, top: 60 }, { left: 45, top: 20 }, { left: 55, top: 90 },
@@ -519,41 +419,36 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
     >
       {/* Animated gradient background */}
       <div className="pointer-events-none absolute inset-0">
-        {/* Base dark gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-black to-zinc-950" />
-
-        {/* Animated mesh gradient */}
         <motion.div
           className="absolute inset-0"
           animate={{
             background: [
-              "radial-gradient(circle at 20% 20%, rgba(127, 29, 29, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(180, 83, 9, 0.1) 0%, transparent 50%), radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 0%, transparent 100%)",
-              "radial-gradient(circle at 80% 20%, rgba(127, 29, 29, 0.15) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(180, 83, 9, 0.1) 0%, transparent 50%), radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 0%, transparent 100%)",
-              "radial-gradient(circle at 50% 80%, rgba(127, 29, 29, 0.15) 0%, transparent 50%), radial-gradient(circle at 50% 20%, rgba(180, 83, 9, 0.1) 0%, transparent 50%), radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 0%, transparent 100%)",
-              "radial-gradient(circle at 20% 20%, rgba(127, 29, 29, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(180, 83, 9, 0.1) 0%, transparent 50%), radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 0%, transparent 100%)",
+              "radial-gradient(circle at 20% 20%, rgba(127, 29, 29, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(180, 83, 9, 0.1) 0%, transparent 50%)",
+              "radial-gradient(circle at 80% 20%, rgba(127, 29, 29, 0.15) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(180, 83, 9, 0.1) 0%, transparent 50%)",
+              "radial-gradient(circle at 20% 20%, rgba(127, 29, 29, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(180, 83, 9, 0.1) 0%, transparent 50%)",
             ],
           }}
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
         />
 
-        {/* Breathing gradient orbs */}
         <motion.div
-          className="absolute left-1/4 top-1/4 h-[600px] w-[600px] rounded-full"
+          className="absolute left-1/4 top-1/4 h-[500px] w-[500px] rounded-full"
           style={{
             background: "radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, transparent 70%)",
             filter: "blur(60px)",
           }}
           animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 0.6, 0.3],
-            x: [0, 50, 0],
-            y: [0, -30, 0],
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+            x: [0, 30, 0],
+            y: [0, -20, 0],
           }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
 
         <motion.div
-          className="absolute right-1/4 bottom-1/4 h-[500px] w-[500px] rounded-full"
+          className="absolute right-1/4 bottom-1/4 h-[400px] w-[400px] rounded-full"
           style={{
             background: "radial-gradient(circle, rgba(251, 146, 60, 0.06) 0%, transparent 70%)",
             filter: "blur(60px)",
@@ -561,72 +456,26 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.4, 0.2, 0.4],
-            x: [0, -40, 0],
-            y: [0, 40, 0],
+            x: [0, -30, 0],
+            y: [0, 30, 0],
           }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
         />
-
-        <motion.div
-          className="absolute left-1/2 top-1/2 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{
-            background: "radial-gradient(circle, rgba(139, 92, 246, 0.04) 0%, transparent 60%)",
-            filter: "blur(80px)",
-          }}
-          animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, 180, 360],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        />
-
-        {/* Animated grid pattern */}
-        <motion.div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)
-            `,
-            backgroundSize: "60px 60px",
-          }}
-          animate={{
-            backgroundPosition: ["0px 0px", "60px 60px"],
-          }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-        />
       </div>
 
-      {/* Spotlight from top */}
-      <motion.div
-        className="absolute left-1/2 top-0 h-[800px] w-[800px] -translate-x-1/2 rounded-full"
-        style={{
-          background: "conic-gradient(from 0deg at 50% 50%, rgba(220, 38, 38, 0.1) 0deg, transparent 60deg, rgba(251, 146, 60, 0.08) 120deg, transparent 180deg, rgba(220, 38, 38, 0.1) 240deg, transparent 300deg, rgba(251, 146, 60, 0.08) 360deg)",
-          filter: "blur(40px)",
-        }}
-        animate={{
-          rotate: [0, 360],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{
-          rotate: { duration: 30, repeat: Infinity, ease: "linear" },
-          scale: { duration: 8, repeat: Infinity, ease: "easeInOut" }
-        }}
-      />
-
-      {/* Floating particles with fixed positions */}
+      {/* Floating particles */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {PARTICLE_POSITIONS.map((pos, i) => (
           <motion.div
             key={i}
-            className="absolute size-1.5 rounded-full bg-gradient-to-r from-red-500/50 to-orange-500/50"
+            className="absolute size-1.5 rounded-full bg-gradient-to-r from-red-500/40 to-orange-500/40"
             style={{
               left: `${pos.left}%`,
               top: `${pos.top}%`,
             }}
             animate={{
-              y: [0, -80, 0],
-              opacity: [0.2, 0.7, 0.2],
+              y: [0, -60, 0],
+              opacity: [0.2, 0.6, 0.2],
               scale: [0.8, 1.2, 0.8],
             }}
             transition={{
@@ -644,45 +493,28 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.6 }}
-        className="relative z-10 flex max-w-lg flex-col items-center text-center"
+        className="relative z-10 flex max-w-xl flex-col items-center text-center"
       >
         {/* Logo */}
         <motion.div
-          className="mb-10 flex items-center gap-5"
+          className="mb-8 flex items-center gap-6"
           initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", damping: 10, delay: 0.3 }}
         >
           <div className="relative">
-            {/* Pulsing rings */}
             <motion.div
-              className="absolute -inset-8 rounded-full border border-red-500/20"
+              className="absolute -inset-6 rounded-full bg-red-500/20 blur-lg"
               animate={{
-                scale: [1, 1.5, 1],
-                opacity: [0.5, 0, 0.5],
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-            <motion.div
-              className="absolute -inset-12 rounded-full border border-red-500/10"
-              animate={{
-                scale: [1, 1.8, 1],
-                opacity: [0.3, 0, 0.3],
-              }}
-              transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-            />
-            <motion.div
-              className="absolute -inset-5 rounded-full bg-red-500/30 blur-xl"
-              animate={{
-                scale: [1, 1.4, 1],
-                opacity: [0.5, 0.9, 0.5],
+                scale: [1, 1.3, 1],
+                opacity: [0.4, 0.8, 0.4],
               }}
               transition={{ duration: 2.5, repeat: Infinity }}
             />
-            <AlertTriangle className="relative size-20 text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.5)]" />
+            <AlertTriangle className="relative size-16 text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.5)]" />
           </div>
           <div className="flex flex-col items-start">
-            <h1 className="font-mono text-8xl font-black tracking-tighter text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.1)]">
+            <h1 className="font-mono text-7xl font-black tracking-tighter text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
               DoDo
             </h1>
             <motion.div
@@ -694,48 +526,48 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
           </div>
         </motion.div>
 
-        {/* Tagline with typing effect style */}
+        {/* Tagline */}
         <motion.div
-          className="mb-5 flex items-center gap-2"
+          className="mb-6 flex items-center gap-2"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <span className="text-2xl font-medium text-zinc-400">
-            The Interrogation Game
+          <span className="text-xl font-medium text-zinc-400">
+            The Interactive Interrogation Game
           </span>
           <motion.span
-            className="inline-block h-6 w-0.5 bg-red-500"
+            className="inline-block h-5 w-0.5 bg-red-500"
             animate={{ opacity: [1, 0, 1] }}
             transition={{ duration: 1, repeat: Infinity }}
           />
         </motion.div>
 
-        {/* Description with enhanced styling */}
+        {/* Description */}
         <motion.div
-          className="mb-12 max-w-md space-y-4"
+          className="mb-10 max-w-md space-y-4"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <p className="text-lg text-zinc-400">
-            You have been accused of a crime you{" "}
-            <span className="font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]">
+          <p className="text-base text-zinc-300">
+            Accused of a crime you{" "}
+            <span className="font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.3)]">
               did not commit
             </span>.
           </p>
-          <p className="text-zinc-500">
-            Detective Grimstone is convinced you are guilty. Use your{" "}
-            <span className="font-semibold text-amber-400">voice</span> to argue
-            your innocence within{" "}
-            <span className="font-semibold text-amber-400">2 minutes</span>.
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            Detective Grimstone is toxic, hostile, and utterly convinced you're guilty.
+            Defend yourself using <span className="font-semibold text-cyan-400">voice chat</span> or{" "}
+            <span className="font-semibold text-cyan-400">text input</span>. Present solid arguments to lower his
+            suspicion before he loses patience and sends you to jail!
           </p>
-          <p className="text-sm text-zinc-600 italic">
-            Outsmart the AI detective or go to jail. No pressure.
+          <p className="text-xs text-zinc-500 italic">
+            Outsmart the AI or buy soap on a rope. Your move.
           </p>
         </motion.div>
 
-        {/* Start Button with enhanced effects */}
+        {/* Start Button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -744,86 +576,75 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
           whileTap={{ scale: 0.95 }}
           className="relative"
         >
-          {/* Button glow */}
           <motion.div
-            className="absolute -inset-1 rounded-xl bg-gradient-to-r from-red-600 via-orange-500 to-red-600 opacity-70 blur-lg"
+            className="absolute -inset-1 rounded-xl bg-gradient-to-r from-red-600 via-orange-500 to-red-600 opacity-60 blur-md"
             animate={{
-              opacity: [0.5, 0.8, 0.5],
-              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+              opacity: [0.4, 0.7, 0.4],
             }}
             transition={{ duration: 3, repeat: Infinity }}
-            style={{ backgroundSize: "200% 200%" }}
           />
           <Button
             onClick={onStart}
             size="lg"
-            className="relative h-16 gap-4 bg-gradient-to-r from-red-600 to-red-700 px-12 text-xl font-bold shadow-2xl shadow-red-900/50 transition-all hover:from-red-500 hover:to-red-600"
+            className="relative h-16 gap-4 bg-gradient-to-r from-red-600 to-red-700 px-10 text-lg font-bold shadow-2xl transition-all hover:from-red-500 hover:to-red-600"
           >
             <motion.div
               animate={{ rotate: [0, -10, 10, 0] }}
               transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
             >
-              <Mic className="size-6" />
+              <Mic className="size-5" />
             </motion.div>
-            Start Interrogation
+            Enter Interrogation Room
           </Button>
         </motion.div>
 
-        {/* Instructions with card styling */}
+        {/* Instructions */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="mt-14 grid grid-cols-3 gap-6"
+          className="mt-12 grid grid-cols-3 gap-6 w-full"
         >
           {[
             {
-              icon: Volume2,
-              label: "Voice Chat",
-              desc: "Speak to defend yourself",
-              color: "from-blue-500/20 to-blue-600/10",
+              icon: MessageSquare,
+              label: "Voice & Text",
+              desc: "Argue using mic or type your alibis",
+              color: "from-blue-500/10 to-violet-600/5",
             },
             {
-              icon: Clock,
-              label: "2 Minutes",
-              desc: "Beat the clock",
-              color: "from-amber-500/20 to-orange-600/10",
+              icon: Gauge,
+              label: "Impatience & Suspicion",
+              desc: "Convince him to lower suspicion",
+              color: "from-red-500/10 to-orange-600/5",
             },
             {
               icon: Trophy,
-              label: "Win Freedom",
-              desc: "Outsmart the detective",
-              color: "from-emerald-500/20 to-green-600/10",
+              label: "Clear Your Name",
+              desc: "Get him to dismiss the case",
+              color: "from-emerald-500/10 to-green-600/5",
             },
           ].map(({ icon: Icon, label, desc, color }, index) => (
             <motion.div
               key={label}
-              className="group flex flex-col items-center gap-3"
-              initial={{ opacity: 0, y: 20 }}
+              className="group flex flex-col items-center gap-3 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 backdrop-blur-sm"
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.1 + index * 0.1 }}
-              whileHover={{ y: -5, scale: 1.05 }}
+              whileHover={{ y: -3, borderColor: "rgba(255,255,255,0.05)" }}
             >
               <div className={cn(
-                "relative flex size-16 items-center justify-center rounded-2xl border border-zinc-800/50 bg-gradient-to-br backdrop-blur-sm transition-all duration-300 group-hover:border-zinc-700",
+                "relative flex size-12 items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-br",
                 color
               )}>
-                <Icon className="size-7 text-zinc-300 transition-colors group-hover:text-white" />
-                <motion.div
-                  className="absolute inset-0 rounded-2xl bg-white/5"
-                  initial={{ opacity: 0 }}
-                  whileHover={{ opacity: 1 }}
-                />
+                <Icon className="size-6 text-zinc-400 group-hover:text-white transition-colors" />
               </div>
-              <p className="text-sm font-semibold text-zinc-300">{label}</p>
-              <p className="text-xs text-zinc-600">{desc}</p>
+              <p className="text-xs font-bold text-zinc-300">{label}</p>
+              <p className="text-[10px] text-zinc-500 text-center leading-normal">{desc}</p>
             </motion.div>
           ))}
         </motion.div>
       </motion.div>
-
-      {/* Bottom fade gradient */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
     </motion.div>
   );
 }
@@ -833,10 +654,14 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
 function ResultScreen({
   won,
   crime,
+  score,
+  elapsedTime,
   onRestart,
 }: {
   won: boolean;
   crime: string;
+  score: number;
+  elapsedTime: number;
   onRestart: () => void;
 }) {
   return (
@@ -846,48 +671,34 @@ function ResultScreen({
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
     >
-      {/* Dramatic background */}
       <div className="absolute inset-0 bg-black/95" />
 
-      {/* Animated background effects */}
+      {/* Background effects */}
       <motion.div
         className={cn(
           "absolute inset-0",
           won
-            ? "bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.15),transparent_70%)]"
-            : "bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.15),transparent_70%)]"
+            ? "bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.12),transparent_70%)]"
+            : "bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.12),transparent_70%)]"
         )}
         animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.5, 0.8, 0.5],
+          scale: [1, 1.1, 1],
+          opacity: [0.4, 0.6, 0.4],
         }}
-        transition={{ duration: 3, repeat: Infinity }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Confetti/particles for win - fixed positions */}
+      {/* Confetti particles for win */}
       {won && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {[
-            { left: 5, color: '#10b981', delay: 0, xOffset: 30 },
-            { left: 12, color: '#06b6d4', delay: 0.3, xOffset: -20 },
-            { left: 20, color: '#fbbf24', delay: 0.6, xOffset: 40 },
-            { left: 28, color: '#a855f7', delay: 0.9, xOffset: -30 },
-            { left: 35, color: '#10b981', delay: 0.2, xOffset: 25 },
-            { left: 42, color: '#06b6d4', delay: 0.5, xOffset: -35 },
-            { left: 50, color: '#fbbf24', delay: 0.8, xOffset: 20 },
-            { left: 58, color: '#a855f7', delay: 0.1, xOffset: -25 },
-            { left: 65, color: '#10b981', delay: 0.4, xOffset: 35 },
-            { left: 72, color: '#06b6d4', delay: 0.7, xOffset: -40 },
-            { left: 80, color: '#fbbf24', delay: 1.0, xOffset: 30 },
-            { left: 88, color: '#a855f7', delay: 0.35, xOffset: -20 },
-            { left: 95, color: '#10b981', delay: 0.65, xOffset: 25 },
-            { left: 8, color: '#06b6d4', delay: 0.95, xOffset: -30 },
-            { left: 25, color: '#fbbf24', delay: 0.25, xOffset: 35 },
-            { left: 45, color: '#a855f7', delay: 0.55, xOffset: -25 },
-            { left: 62, color: '#10b981', delay: 0.85, xOffset: 40 },
-            { left: 78, color: '#06b6d4', delay: 0.15, xOffset: -35 },
-            { left: 92, color: '#fbbf24', delay: 0.45, xOffset: 20 },
-            { left: 18, color: '#a855f7', delay: 0.75, xOffset: -40 },
+            { left: 10, color: '#10b981', delay: 0, xOffset: 20 },
+            { left: 25, color: '#06b6d4', delay: 0.3, xOffset: -15 },
+            { left: 40, color: '#fbbf24', delay: 0.6, xOffset: 30 },
+            { left: 55, color: '#a855f7', delay: 0.1, xOffset: -20 },
+            { left: 70, color: '#10b981', delay: 0.4, xOffset: 25 },
+            { left: 85, color: '#06b6d4', delay: 0.7, xOffset: -30 },
+            { left: 95, color: '#fbbf24', delay: 0.2, xOffset: 15 },
           ].map((particle, i) => (
             <motion.div
               key={i}
@@ -896,9 +707,9 @@ function ResultScreen({
                 left: `${particle.left}%`,
                 backgroundColor: particle.color,
               }}
-              initial={{ top: "-10%", rotate: 0 }}
+              initial={{ top: "-5%", rotate: 0 }}
               animate={{
-                top: "110%",
+                top: "105%",
                 rotate: 360,
                 x: [0, particle.xOffset, -particle.xOffset],
               }}
@@ -913,166 +724,139 @@ function ResultScreen({
         </div>
       )}
 
-      {/* Jail bars animation for lose */}
+      {/* Jail bars for lose */}
       {!won && (
         <motion.div
           className="pointer-events-none absolute inset-0 flex justify-around"
           initial={{ y: "-100%" }}
           animate={{ y: 0 }}
-          transition={{ delay: 0.5, duration: 0.8, type: "spring", damping: 15 }}
+          transition={{ delay: 0.4, duration: 0.8, type: "spring", damping: 15 }}
         >
-          {[...Array(8)].map((_, i) => (
+          {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="h-full w-3 bg-gradient-to-b from-zinc-700 via-zinc-600 to-zinc-700 opacity-30"
+              className="h-full w-2.5 bg-gradient-to-b from-zinc-800 via-zinc-700 to-zinc-800 opacity-20 shadow-[0_0_10px_rgba(0,0,0,0.8)]"
             />
           ))}
         </motion.div>
       )}
 
       <motion.div
-        initial={{ scale: 0.8, y: 50, opacity: 0 }}
+        initial={{ scale: 0.9, y: 30, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ type: "spring", damping: 15, delay: 0.1 }}
-        className="relative mx-6 max-w-lg overflow-hidden rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/95 to-black/95 p-10 text-center shadow-2xl backdrop-blur-xl"
+        className="relative mx-6 w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/90 to-black/95 p-8 text-center shadow-2xl backdrop-blur-xl"
       >
-        {/* Inner glow */}
+        {/* Glow indicator */}
         <motion.div
           className={cn(
-            "absolute inset-0 opacity-30",
+            "absolute inset-0 opacity-20",
             won
               ? "bg-gradient-to-br from-emerald-500/20 via-transparent to-cyan-500/20"
               : "bg-gradient-to-br from-red-500/20 via-transparent to-orange-500/20"
           )}
-          animate={{ opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          animate={{ opacity: [0.15, 0.3, 0.15] }}
+          transition={{ duration: 2.5, repeat: Infinity }}
         />
 
-        {/* Icon with effects - centered */}
-        <div className="relative mx-auto mb-8 flex items-center justify-center">
-          {/* Pulsing rings */}
+        {/* Status icon badge */}
+        <div className="relative mx-auto mb-6 flex items-center justify-center">
           <motion.div
             className={cn(
-              "absolute size-28 rounded-full",
-              won ? "bg-emerald-500/20" : "bg-red-500/20"
+              "absolute size-24 rounded-full",
+              won ? "bg-emerald-500/10" : "bg-red-500/10"
             )}
             initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 2, opacity: 0 }}
-            transition={{ duration: 1.5, repeat: Infinity }}
+            animate={{ scale: 1.8, opacity: 0 }}
+            transition={{ duration: 2, repeat: Infinity }}
           />
-          <motion.div
-            className={cn(
-              "absolute size-28 rounded-full",
-              won ? "bg-emerald-500/20" : "bg-red-500/20"
-            )}
-            initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 2, opacity: 0 }}
-            transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
-          />
-
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", damping: 12, delay: 0.3 }}
+            transition={{ type: "spring", damping: 12, delay: 0.2 }}
             className={cn(
-              "relative flex size-28 items-center justify-center rounded-full shadow-2xl",
+              "relative flex size-24 items-center justify-center rounded-full shadow-2xl",
               won
-                ? "bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-emerald-500/40"
-                : "bg-gradient-to-br from-red-500 to-orange-500 shadow-red-500/40"
+                ? "bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-emerald-500/30"
+                : "bg-gradient-to-br from-red-500 to-orange-500 shadow-red-500/30"
             )}
           >
-            <motion.div
-              animate={won ? { rotate: [0, -10, 10, 0] } : { scale: [1, 1.1, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
-            >
-              {won ? (
-                <Trophy className="size-14 text-white drop-shadow-lg" />
-              ) : (
-                <Skull className="size-14 text-white drop-shadow-lg" />
-              )}
-            </motion.div>
+            {won ? (
+              <Trophy className="size-11 text-white drop-shadow-md" />
+            ) : (
+              <Skull className="size-11 text-white drop-shadow-md" />
+            )}
           </motion.div>
         </div>
 
-        {/* Title with glow */}
+        {/* Title */}
         <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
           className={cn(
-            "mb-3 text-5xl font-black tracking-tight",
+            "mb-2 text-4xl font-black tracking-tight uppercase",
             won
-              ? "text-emerald-400 drop-shadow-[0_0_30px_rgba(16,185,129,0.5)]"
-              : "text-red-400 drop-shadow-[0_0_30px_rgba(239,68,68,0.5)]"
+              ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+              : "text-red-400 drop-shadow-[0_0_20px_rgba(239,68,68,0.3)]"
           )}
         >
-          {won ? "CASE DISMISSED!" : "GUILTY!"}
+          {won ? "Case Dismissed!" : "Verdict: Guilty!"}
         </motion.h2>
 
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mb-6 text-xl text-zinc-400"
-        >
+        {/* Subtitle description */}
+        <p className="mb-6 text-sm text-zinc-400">
           {won
-            ? "The detective could not handle your arguments!"
-            : "You are going to jail for..."}
-        </motion.p>
+            ? "Detective Grimstone reluctantly admitted he has the wrong suspect."
+            : "Your arguments crumbled, and you were locked up for the crime:"}
+        </p>
 
-        {/* Crime card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className={cn(
-            "mb-10 rounded-2xl border p-5 backdrop-blur",
-            won
-              ? "border-emerald-500/30 bg-emerald-500/10"
-              : "border-red-500/30 bg-red-500/10"
-          )}
-        >
-          <p className="text-base font-medium text-zinc-300">"{crime}"</p>
-        </motion.div>
+        {/* Case Info Panel */}
+        <div className={cn(
+          "mb-6 rounded-xl border p-4 backdrop-blur text-left space-y-1.5",
+          won
+            ? "border-emerald-500/20 bg-emerald-950/10"
+            : "border-red-500/20 bg-red-950/10"
+        )}>
+          <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">The Accusation</span>
+          <p className="text-sm font-semibold text-zinc-300">"{crime}"</p>
+        </div>
 
-        {/* Restart Button with glow */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="relative"
-        >
+        {/* Stats breakdown */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="bg-zinc-950/50 border border-zinc-800/50 p-3.5 rounded-xl">
+            <span className="block text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mb-1">Final Score</span>
+            <span className="text-xl font-bold text-cyan-400">{score.toLocaleString()}</span>
+          </div>
+          <div className="bg-zinc-950/50 border border-zinc-800/50 p-3.5 rounded-xl">
+            <span className="block text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mb-1">Interrogation Time</span>
+            <span className="text-xl font-bold text-zinc-300">
+              {Math.floor(elapsedTime / 60)}m {elapsedTime % 60}s
+            </span>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="relative">
           <motion.div
             className={cn(
-              "absolute -inset-1 rounded-xl blur-lg",
-              won ? "bg-emerald-500/50" : "bg-red-500/50"
+              "absolute -inset-1 rounded-xl blur-md opacity-40",
+              won ? "bg-emerald-500" : "bg-red-500"
             )}
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            animate={{ opacity: [0.2, 0.4, 0.2] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button
-              onClick={onRestart}
-              size="lg"
-              className={cn(
-                "relative h-14 gap-3 px-10 text-lg font-bold shadow-xl",
-                won
-                  ? "bg-emerald-600 hover:bg-emerald-500"
-                  : "bg-red-600 hover:bg-red-500"
-              )}
-            >
-              <motion.div
-                animate={{ rotate: [0, -360] }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
-                whileHover={{ rotate: -360 }}
-              >
-                <RotateCcw className="size-5" />
-              </motion.div>
-              {won ? "Play Again" : "Try Again"}
-            </Button>
-          </motion.div>
-        </motion.div>
+          <Button
+            onClick={onRestart}
+            size="lg"
+            className={cn(
+              "relative w-full h-14 gap-3 px-8 text-base font-bold shadow-xl transition-transform hover:scale-[1.02]",
+              won
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                : "bg-red-600 hover:bg-red-500 text-white"
+            )}
+          >
+            <RotateCcw className="size-4" />
+            {won ? "Play Interrogation Again" : "Try Interrogation Again"}
+          </Button>
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -1082,19 +866,23 @@ function ResultScreen({
 
 function GameScreen({
   crime,
-  timeRemaining,
-  onTimeUp,
+  elapsedTime,
+  suspicion,
   onWin,
+  onLose,
   onTimerStart,
   onGoodArgument,
+  onIncreaseImpatience,
   timerStarted,
 }: {
   crime: string;
-  timeRemaining: number;
-  onTimeUp: () => void;
+  elapsedTime: number;
+  suspicion: number;
   onWin: () => void;
+  onLose: () => void;
   onTimerStart: () => void;
-    onGoodArgument: () => void;
+  onGoodArgument: () => void;
+  onIncreaseImpatience: (amount: number) => void;
   timerStarted: boolean;
 }) {
   const { client, connected, connect, disconnect, volume } =
@@ -1105,28 +893,35 @@ function GameScreen({
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [showTimeBonus, setShowTimeBonus] = useState(false);
+  const [showInnocenceBonus, setShowInnocenceBonus] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [textInput, setTextInput] = useState("");
+
   const transcriptRef = useRef("");
   const hasStartedRef = useRef(false);
   const hasSentAccusationRef = useRef(false);
   const firstTurnCompleteRef = useRef(false);
+  const userSpokeRef = useRef(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Calculate score (base score + time bonus)
-  const baseScore = 1000;
-  const timeBonus = Math.floor(timeRemaining * 10);
-  const currentScore = timerStarted ? baseScore + timeBonus : 0;
+  // Score live calculation
+  const currentScore = Math.max(0, 2000 - (suspicion * 12) - (elapsedTime * 2));
 
-  // Keep transcript ref in sync
+  // Sync transcript ref
   useEffect(() => {
     transcriptRef.current = currentTranscript;
   }, [currentTranscript]);
 
-  // Handle AI responses
+  // Auto-scroll chat history
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory, currentTranscript, isAiSpeaking]);
+
+  // Handle AI Content and events
   useEffect(() => {
     if (!client) return;
 
     const handleContent = (content: unknown) => {
-      console.log("[GameScreen] Received content:", content);
       const contentObj = content as {
         modelTurn?: { parts?: Array<{ text?: string }> };
       };
@@ -1138,22 +933,60 @@ function GameScreen({
         if (text) {
           setCurrentTranscript((prev) => prev + text);
           setIsAiSpeaking(true);
+
+          // Add/stream to chat history
+          setChatHistory((prev) => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg && lastMsg.sender === "detective" && lastMsg.isLive) {
+              return [
+                ...prev.slice(0, -1),
+                { ...lastMsg, text: lastMsg.text + text }
+              ];
+            } else {
+              // Insert user voice marker before starting detective text if user had spoken
+              let base = prev;
+              if (userSpokeRef.current) {
+                userSpokeRef.current = false;
+                const lastNonVoice = prev[prev.length - 1];
+                if (!lastNonVoice || lastNonVoice.sender !== "user") {
+                  base = [
+                    ...prev,
+                    {
+                      id: "voice-" + Math.random().toString(),
+                      sender: "user",
+                      text: "🎤 [Defended via Voice Chat]",
+                      timestamp: new Date(),
+                      isVoice: true
+                    }
+                  ];
+                }
+              }
+              return [
+                ...base,
+                {
+                  id: Math.random().toString(),
+                  sender: "detective",
+                  text: text,
+                  timestamp: new Date(),
+                  isLive: true
+                }
+              ];
+            }
+          });
         }
       }
     };
 
     const handleTurnComplete = () => {
-      console.log("[GameScreen] Turn complete");
+      console.log("[GameScreen] Detective finished speaking");
       setIsAiSpeaking(false);
 
-      // Start timer after AI finishes the first accusation
       if (!firstTurnCompleteRef.current) {
         firstTurnCompleteRef.current = true;
-        console.log("[GameScreen] First turn complete - starting timer");
         onTimerStart();
       }
 
-      // Check for win condition keywords
+      // Check win condition transcripts
       const transcript = transcriptRef.current.toLowerCase();
       if (
         transcript.includes("free to go") ||
@@ -1164,74 +997,71 @@ function GameScreen({
         transcript.includes("my mistake")
       ) {
         onWin();
+        return;
       }
 
-      // Detect good arguments - when AI shows signs of being challenged or frustrated
-      // These phrases indicate the player made a good point that the AI is struggling with
-      const goodArgumentPhrases = [
-        "oh please",
-        "that's pathetic",
-        "nice try",
-        "you think that's clever",
-        "how adorable",
-        "spare me",
-        "weak argument",
-        "feeble attempt",
-        "dammit",
-        "wait",
-        "doesn't add up",
-        "maybe",
-        "perhaps",
-        "i suppose",
-        "alright",
-        "fine",
-        "whatever",
-        "i guess",
-        "you got lucky",
-        "this time",
-        "for now",
-        "i'll give you that",
-        "point taken",
-        "i see",
-        "hmm",
-        "well",
-      ];
+      // Check lose condition transcripts
+      if (
+        transcript.includes("going down") ||
+        transcript.includes("going to jail") ||
+        transcript.includes("lock you up") ||
+        transcript.includes("guilty as charged") ||
+        transcript.includes("worthless piece of shit") ||
+        transcript.includes("sending you to prison")
+      ) {
+        onLose();
+        return;
+      }
 
+      // Scan for Detective's irritation phrases indicating a good point
+      const goodArgumentPhrases = [
+        "oh please", "that's pathetic", "nice try", "you think that's clever",
+        "how adorable", "spare me", "weak argument", "feeble attempt",
+        "dammit", "wait", "doesn't add up", "maybe", "perhaps",
+        "i suppose", "alright", "fine", "whatever", "i guess",
+        "you got lucky", "this time", "for now", "i'll give you that",
+        "point taken", "i see", "hmm", "well",
+      ];
       const hasGoodArgument = goodArgumentPhrases.some(phrase =>
         transcript.includes(phrase)
       );
 
-      // Also check if AI is being dismissive or condescending in response - that means player challenged them
       const dismissivePhrases = [
-        "pathetic",
-        "weak",
-        "feeble",
-        "stupid",
-        "beneath",
-        "not smart enough",
-        "not clever",
-        "adorable",
-        "spare me",
+        "pathetic", "weak", "feeble", "stupid", "beneath",
+        "not smart enough", "not clever", "adorable", "spare me", "bullshit", "crap",
       ];
-
       const isDismissive = dismissivePhrases.some(phrase =>
         transcript.includes(phrase)
       );
 
-      // If AI shows frustration OR dismissiveness, player made a good argument - add time!
-      if (timerStarted && (hasGoodArgument || isDismissive)) {
-        console.log("[GameScreen] Good argument detected! Adding time bonus.");
-        setShowTimeBonus(true);
-        onGoodArgument();
-        // Hide notification after 3 seconds
-        setTimeout(() => setShowTimeBonus(false), 3000);
+      if (timerStarted) {
+        if (hasGoodArgument || isDismissive) {
+          setShowInnocenceBonus(true);
+          onGoodArgument();
+          setTimeout(() => setShowInnocenceBonus(false), 3000);
+        } else {
+          // Increment suspicion for normal turns where user doesn't challenge the AI
+          onIncreaseImpatience(6);
+        }
       }
+
+      // Remove live typing cursor
+      setChatHistory((prev) => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg && lastMsg.sender === "detective" && lastMsg.isLive) {
+          return [
+            ...prev.slice(0, -1),
+            { ...lastMsg, isLive: false }
+          ];
+        }
+        return prev;
+      });
 
       setCurrentTranscript("");
     };
 
     const handleSetupComplete = () => {
-      console.log("[GameScreen] Setup complete - AI is ready!");
+      console.log("[GameScreen] Setup complete");
     };
 
     const handleError = (error: Error) => {
@@ -1241,14 +1071,11 @@ function GameScreen({
     };
 
     const handleClose = (event: CloseEvent) => {
-      console.log("[GameScreen] Connection closed:", event.code, event.reason);
       setIsConnecting(false);
-
-      // Show the actual error from Google
       if (event.reason) {
         setConnectionError(event.reason);
       } else if (event.code !== 1000) {
-        setConnectionError(`Connection lost (code: ${event.code})`);
+        setConnectionError(`Interrogation room closed (code: ${event.code})`);
       }
     };
 
@@ -1265,11 +1092,12 @@ function GameScreen({
       client.off("error", handleError);
       client.off("close", handleClose);
     };
-  }, [client, onWin, onTimerStart, onGoodArgument, timerStarted]);
+  }, [client, onWin, onLose, onTimerStart, onGoodArgument, onIncreaseImpatience, timerStarted]);
 
-  // Handle audio recording - only start after timer has started (AI finished accusation)
+  // Handle audio recorder data ingestion
   useEffect(() => {
     const onData = (base64: string) => {
+      userSpokeRef.current = true;
       client.sendRealtimeInput([
         {
           mimeType: "audio/pcm;rate=16000",
@@ -1289,55 +1117,40 @@ function GameScreen({
     };
   }, [connected, client, muted, audioRecorder, timerStarted]);
 
-  // Auto-connect when component mounts with delay for config propagation
+  // Trigger setup/connect
   useEffect(() => {
-    console.log("[GameScreen] Mount effect - hasStarted:", hasStartedRef.current, "connected:", connected);
-
     if (!hasStartedRef.current) {
       hasStartedRef.current = true;
       setIsConnecting(true);
-      console.log("[GameScreen] Starting connection process...");
 
-      // Delay connection to ensure config is set
       const connectionTimer = setTimeout(async () => {
-        console.log("[GameScreen] Attempting to connect after delay...");
         try {
           await connect();
-          console.log("[GameScreen] Connection successful!");
           setIsConnecting(false);
         } catch (error) {
-          console.error("[GameScreen] Connection failed:", error);
           setConnectionError(
-            error instanceof Error ? error.message : "Failed to connect"
+            error instanceof Error ? error.message : "Failed to connect to room"
           );
           setIsConnecting(false);
         }
       }, 500);
 
-      return () => {
-        console.log("[GameScreen] Cleanup - clearing connection timer");
-        clearTimeout(connectionTimer);
-      };
+      return () => clearTimeout(connectionTimer);
     }
   }, [connect]);
 
-  // Update connecting state based on connection
   useEffect(() => {
-    console.log("[GameScreen] Connection state changed - connected:", connected);
     if (connected) {
       setIsConnecting(false);
       setConnectionError(null);
     }
   }, [connected]);
 
-  // Send initial crime accusation after connection is established
+  // Initial prompt trigger
   useEffect(() => {
     if (connected && crime && !hasSentAccusationRef.current) {
       hasSentAccusationRef.current = true;
-      console.log("Sending accusation for crime:", crime);
-      // Set speaking state immediately so UI shows "Detective is speaking..."
       setIsAiSpeaking(true);
-      // Small delay to ensure connection is stable
       const timer = setTimeout(() => {
         try {
           client.send(
@@ -1346,10 +1159,8 @@ function GameScreen({
             },
             true
           );
-          console.log("Accusation sent!");
         } catch (error) {
-          console.error("Failed to send accusation:", error);
-          setConnectionError("Failed to start interrogation");
+          setConnectionError("Failed to initiate interrogation");
           setIsAiSpeaking(false);
         }
       }, 1000);
@@ -1357,14 +1168,7 @@ function GameScreen({
     }
   }, [connected, crime, client]);
 
-  // Handle time up
-  useEffect(() => {
-    if (timeRemaining <= 0) {
-      onTimeUp();
-    }
-  }, [timeRemaining, onTimeUp]);
-
-  // Cleanup on unmount
+  // Cleanup websocket
   useEffect(() => {
     return () => {
       audioRecorder.stop();
@@ -1372,149 +1176,96 @@ function GameScreen({
     };
   }, [audioRecorder, disconnect]);
 
+  // Text alibi submission
+  const handleSendText = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = textInput.trim();
+    if (!trimmed || !connected || !client) return;
+
+    client.send({ text: trimmed }, true);
+
+    setChatHistory((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(),
+        sender: "user",
+        text: trimmed,
+        timestamp: new Date(),
+        isVoice: false
+      }
+    ]);
+    setTextInput("");
+  };
+
+  // Impatience mood calculation
+  const getDetectiveMood = () => {
+    if (suspicion >= 85) return "Furious 😡";
+    if (suspicion >= 65) return "Hostile 😠";
+    if (suspicion >= 45) return "Suspicious 🤨";
+    if (suspicion >= 20) return "Impatient 😐";
+    return "Flustered 😳";
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="relative flex min-h-screen flex-col overflow-hidden"
+      className="relative flex min-h-screen flex-col overflow-hidden bg-black font-sans"
     >
-      {/* FULLSCREEN BLOB BACKGROUND - sits behind everything */}
-      <div className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.3, type: "spring", damping: 15 }}
-        >
-          <FloatingBlob
-            isActive={connected}
-            volume={volume}
-            isSpeaking={isAiSpeaking}
-          />
-        </motion.div>
+      {/* Background elements */}
+      <div className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center opacity-30 blur-2xl">
+        <FloatingBlob
+          isActive={connected}
+          volume={volume}
+          isSpeaking={isAiSpeaking}
+        />
       </div>
 
-      {/* Animated gradient background overlay */}
-      <div className="pointer-events-none fixed inset-0 z-[1] overflow-hidden">
-        {/* Subtle vignette for depth */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.3)_80%)]" />
+      <div className="pointer-events-none fixed inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.6)_95%)]" />
 
-        {/* Floating particles - pastel colors */}
-        {[...Array(12)].map((_, i) => (
-          <motion.div
-            key={`game-particle-${i}`}
-            className="absolute size-1.5 rounded-full"
-            style={{
-              left: `${10 + (i * 7)}%`,
-              top: `${15 + ((i * 13) % 70)}%`,
-              background: i % 3 === 0 ? "rgba(129, 230, 217, 0.5)" : i % 3 === 1 ? "rgba(167, 139, 250, 0.5)" : "rgba(244, 114, 182, 0.5)",
-              filter: "blur(1px)",
-            }}
-            animate={{
-              y: [0, -30, 0],
-              opacity: [0.2, 0.6, 0.2],
-              scale: [0.8, 1.2, 0.8],
-            }}
-            transition={{
-              duration: 4 + (i % 3),
-              repeat: Infinity,
-              delay: i * 0.3,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Header - transparent to show blob behind */}
-      <header className="relative z-20 border-b border-white/10 bg-black/30 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          {/* Logo */}
-          <motion.div
-            className="flex items-center gap-3"
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-          >
+      {/* Header */}
+      <header className="relative z-20 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
             <div className="relative">
               <motion.div
-                className="absolute -inset-2 rounded-full bg-red-500/20 blur-md"
+                className="absolute -inset-2 rounded-full bg-red-500/10 blur-md"
                 animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                transition={{ duration: 2.5, repeat: Infinity }}
               />
-              <AlertTriangle className="relative size-8 text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+              <AlertTriangle className="relative size-6 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
             </div>
-            <span className="font-mono text-2xl font-bold text-white drop-shadow-lg">
-              DoDo
-            </span>
-          </motion.div>
+            <span className="font-mono text-xl font-bold tracking-tighter text-white">DoDo</span>
+          </div>
 
-          {/* Timer */}
-          <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="flex flex-col items-end gap-2"
-          >
-            <GameTimer timeRemaining={timeRemaining} />
-            {!timerStarted && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{
-                  opacity: 1,
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{
-                  scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-                }}
-                className="flex items-center gap-2 rounded-lg bg-amber-500/30 px-4 py-2 border-2 border-amber-400/50 shadow-lg shadow-amber-500/30"
-              >
-                <motion.div
-                  animate={{
-                    opacity: [0.5, 1, 0.5],
-                    scale: [1, 1.3, 1]
-                  }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="size-3 rounded-full bg-amber-400"
-                />
-                <span className="text-sm font-bold text-amber-200 uppercase tracking-wide">⏸️ Game Not Started</span>
-              </motion.div>
-            )}
-          </motion.div>
+          <InterrogationTimer elapsedTime={elapsedTime} />
         </div>
 
-        {/* Crime Banner - semi-transparent */}
-        <motion.div
-          className="border-t border-pink-500/20 bg-gradient-to-r from-pink-950/30 via-violet-900/30 to-pink-950/30 px-6 py-4 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <p className="mx-auto max-w-5xl text-center">
-            <span className="text-xs font-bold uppercase tracking-widest text-pink-400">Accused of: </span>
-            <span className="ml-2 text-base font-medium text-pink-100">{crime}</span>
+        {/* Accusation bar */}
+        <div className="border-t border-zinc-900 bg-zinc-950/20 px-6 py-2.5">
+          <p className="mx-auto max-w-6xl text-center text-xs">
+            <span className="font-black text-red-500 uppercase tracking-widest">Charges:</span>
+            <span className="ml-2 font-medium text-zinc-300">"{crime}"</span>
           </p>
-        </motion.div>
+        </div>
       </header>
 
-      {/* Time Bonus Notification */}
+      {/* Flashing Innocence Gain notification */}
       <AnimatePresence>
-        {showTimeBonus && (
+        {showInnocenceBonus && (
           <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.8 }}
+            initial={{ opacity: 0, y: -40, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -30, scale: 0.9 }}
-            className="fixed left-1/2 top-24 z-50 -translate-x-1/2"
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed left-1/2 top-28 z-50 -translate-x-1/2"
           >
-            <div className="rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-br from-emerald-900/90 to-green-900/80 px-8 py-4 shadow-2xl shadow-emerald-500/30 backdrop-blur-xl">
-              <div className="flex items-center gap-3">
-                <motion.div
-                  animate={{ rotate: [0, 360] }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <Zap className="size-6 text-emerald-400" />
-                </motion.div>
+            <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/95 to-zinc-950/95 px-6 py-3 shadow-xl shadow-emerald-500/10 backdrop-blur-xl">
+              <div className="flex items-center gap-2.5">
+                <Zap className="size-5 text-emerald-400 animate-bounce" />
                 <div>
-                  <p className="text-lg font-bold text-emerald-200">Good Argument!</p>
-                  <p className="text-sm text-emerald-300">+15 seconds added</p>
+                  <p className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Innocence Gain</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">Suspicion Level Decreased by 15%</p>
                 </div>
               </div>
             </div>
@@ -1522,300 +1273,291 @@ function GameScreen({
         )}
       </AnimatePresence>
 
-      {/* Main content */}
-      <main className="relative z-10 flex flex-1 gap-6 px-6 py-6">
-        {/* Center - Current AI Message */}
-        <div className="flex flex-1 items-center justify-center">
-          <AnimatePresence mode="wait">
-            {currentTranscript ? (
+      {/* Layout Content */}
+      <main className="relative z-10 flex flex-1 flex-col lg:flex-row gap-6 px-6 py-6 max-w-6xl mx-auto w-full overflow-hidden">
+        {/* Left Side: Interrogation Chat log */}
+        <div className="flex flex-1 flex-col h-[calc(100vh-220px)] lg:h-[calc(100vh-200px)] min-h-[350px]">
+          {/* Chat bubble feed */}
+          <div className="flex-1 overflow-y-auto space-y-4 pr-3 pb-4 scrollbar border border-zinc-900 bg-zinc-950/40 rounded-t-xl p-5 shadow-inner backdrop-blur-sm">
+            {chatHistory.length === 0 && !isConnecting && (
+              <div className="flex h-full flex-col items-center justify-center text-center text-zinc-500 space-y-3">
+                <MessageSquare className="size-10 text-zinc-700 animate-pulse" />
+                <div>
+                  <p className="font-semibold text-zinc-400 text-sm">Interrogation Room Feed Active</p>
+                  <p className="text-xs max-w-xs mt-1">Wait for Detective Grimstone to speak. When he finishes, speak clearly or type your alibi.</p>
+                </div>
+              </div>
+            )}
+
+            {isConnecting && (
+              <div className="flex h-full flex-col items-center justify-center text-center text-amber-500 space-y-3 animate-pulse">
+                <div className="size-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
+                <p className="text-xs font-bold tracking-widest uppercase">Connecting Feed...</p>
+              </div>
+            )}
+
+            {chatHistory.map((msg) => (
               <motion.div
-                key="transcript"
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="w-full max-w-3xl rounded-2xl border-2 border-violet-500/40 bg-gradient-to-br from-violet-900/50 to-purple-900/40 p-8 shadow-2xl shadow-violet-500/20 backdrop-blur-xl"
+                key={msg.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  "flex w-full flex-col",
+                  msg.sender === "detective" ? "items-start" : "items-end"
+                )}
               >
-                <div className="mb-4 flex items-center gap-3">
-                  <motion.div
-                    className="size-3 rounded-full bg-violet-400"
-                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                  />
-                  <span className="text-sm font-bold uppercase tracking-wider text-violet-300">
-                    Detective Grimstone
+                <div className="flex items-center gap-2 mb-1 px-1">
+                  <span className={cn(
+                    "text-[10px] font-bold uppercase tracking-wider",
+                    msg.sender === "detective" ? "text-violet-400" : "text-cyan-400"
+                  )}>
+                    {msg.sender === "detective" ? "Detective Grimstone" : "You (Suspect)"}
                   </span>
                 </div>
-                <p className="text-lg font-medium leading-relaxed text-white">
-                  {currentTranscript}
-                </p>
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-md border",
+                    msg.sender === "detective"
+                      ? "bg-gradient-to-br from-violet-950/40 to-zinc-950/80 text-zinc-200 border-violet-900/20"
+                      : msg.isVoice
+                        ? "bg-gradient-to-br from-cyan-950/20 to-zinc-950/50 text-cyan-300/80 border-cyan-800/10 italic"
+                        : "bg-cyan-950/30 text-zinc-100 border-cyan-800/20"
+                  )}
+                >
+                  {msg.text}
+                  {msg.isLive && (
+                    <motion.span
+                      className="inline-block ml-1 h-3 w-1.5 bg-violet-400"
+                      animate={{ opacity: [1, 0, 1] }}
+                      transition={{ duration: 0.8, repeat: Infinity }}
+                    />
+                  )}
+                </div>
               </motion.div>
-            ) : isAiSpeaking ? (
-              <motion.div
-                key="speaking"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center gap-4"
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Chat text bar + Mic / Control Tray */}
+          <div className="bg-zinc-950/70 border-x border-b border-zinc-900 p-4 rounded-b-xl backdrop-blur-md">
+            <form onSubmit={handleSendText} className="flex gap-2">
+              <Input
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder={
+                  !connected
+                    ? "Establish connection first..."
+                    : isAiSpeaking
+                      ? "Wait for the detective to finish speaking..."
+                      : "Type your argument/alibi here..."
+                }
+                disabled={!connected || isAiSpeaking}
+                className="bg-black/50 border-zinc-850 text-white placeholder:text-zinc-600 focus-visible:ring-violet-600/30 font-sans"
+              />
+              <Button
+                type="submit"
+                disabled={!connected || !textInput.trim() || isAiSpeaking}
+                className="bg-violet-600 hover:bg-violet-500 text-white px-5"
               >
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="size-16 rounded-full border-4 border-violet-500/50 bg-violet-500/20"
-                />
-                  <div className="text-center">
-                    <p className="text-xl font-semibold text-violet-300">Detective is speaking...</p>
-                    {!timerStarted && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                          scale: [1, 1.02, 1]
-                        }}
-                        transition={{
-                          scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-                        }}
-                        className="mt-4 rounded-xl bg-amber-500/20 border-2 border-amber-400/50 px-6 py-3 shadow-lg shadow-amber-500/20"
-                      >
-                        <p className="text-lg font-bold text-amber-300 uppercase tracking-wide">
-                          ⏸️ Game Hasn't Started Yet
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-amber-400">
-                          Timer will begin after accusation
-                        </p>
-                      </motion.div>
-                    )}
-                  </div>
-              </motion.div>
-            ) : !connected ? (
-              <motion.div
-                key="connecting"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center gap-4"
-              >
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="size-16 rounded-full border-4 border-amber-500/50 bg-amber-500/20"
-                />
-                <p className="text-xl font-semibold text-amber-300">Connecting to interrogation room...</p>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="waiting"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center gap-4"
-              >
-                <p className="text-lg text-zinc-400">Waiting for the detective to speak...</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <Send className="size-4" />
+              </Button>
+            </form>
+
+            <div className="mt-3 flex items-center justify-between border-t border-zinc-900 pt-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={muted ? "outline" : "destructive"}
+                  size="sm"
+                  onClick={() => setMuted(!muted)}
+                  disabled={!connected}
+                  className={cn(
+                    "h-9 px-3 text-xs gap-1.5 font-bold transition-all",
+                    muted
+                      ? "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800"
+                      : "bg-red-950/30 border-red-500/20 text-red-400 hover:bg-red-900/30"
+                  )}
+                >
+                  {muted ? <MicOff className="size-3.5" /> : <Mic className="size-3.5" />}
+                  <span>{muted ? "Unmute Mic" : "Mute Mic"}</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={connected ? disconnect : connect}
+                  className={cn(
+                    "h-9 px-3 text-xs gap-1.5 font-bold border",
+                    connected
+                      ? "border-emerald-500/20 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-900/20"
+                      : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800"
+                  )}
+                >
+                  {connected ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+                  <span>{connected ? "Disconnect" : "Reconnect Feed"}</span>
+                </Button>
+              </div>
+
+              <span className={cn(
+                "text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                connectionError
+                  ? "text-red-400"
+                  : !connected
+                    ? "text-zinc-600"
+                    : isAiSpeaking
+                      ? "text-violet-400"
+                      : muted
+                        ? "text-orange-400"
+                        : "text-emerald-400"
+              )}>
+                {connectionError ? (
+                  <>
+                    <ShieldAlert className="size-3.5" />
+                    <span>Disconnected: Error</span>
+                  </>
+                ) : !connected ? (
+                  <>
+                    <Info className="size-3.5" />
+                    <span>Room Offline</span>
+                  </>
+                ) : isAiSpeaking ? (
+                  <>
+                    <span className="size-1.5 rounded-full bg-violet-400 animate-ping" />
+                    <span>Detective Speaking</span>
+                  </>
+                ) : muted ? (
+                  <>
+                    <MicOff className="size-3.5" />
+                    <span>Voice Input Paused</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Mic Listening</span>
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Right side - Stats panel */}
+        {/* Right Side: HUD Info Panel */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="w-80 space-y-4"
+          className="w-full lg:w-72 flex flex-col gap-4"
         >
-          {/* Score Card */}
-          <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/40 to-blue-950/40 p-6 shadow-xl backdrop-blur-lg">
-            <div className="mb-4 flex items-center gap-2">
-              <Award className="size-5 text-cyan-400" />
-              <h3 className="text-lg font-bold text-cyan-300">Score</h3>
+          {/* Suspicion Level Gauge */}
+          <div className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm">
+            <div className="mb-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Gauge className="size-4.5 text-zinc-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">Suspicion Level</h3>
+              </div>
+              <span className={cn(
+                "text-xs font-black px-2 py-0.5 rounded-md font-mono",
+                suspicion >= 80 ? "bg-red-950 text-red-400" :
+                suspicion >= 50 ? "bg-amber-950 text-amber-400" :
+                "bg-emerald-950 text-emerald-400"
+              )}>
+                {suspicion}%
+              </span>
             </div>
-            <motion.div
-              key={currentScore}
-              initial={{ scale: 1.2 }}
-              animate={{ scale: 1 }}
-              className="text-4xl font-bold text-cyan-200"
-            >
-              {currentScore.toLocaleString()}
-            </motion.div>
-            <p className="mt-2 text-xs text-cyan-400/70">
-              Base: {baseScore} + Time Bonus: {timeBonus}
-            </p>
+
+            {/* Horizontal meter */}
+            <div className="h-3 w-full rounded-full bg-zinc-950 overflow-hidden border border-zinc-900 p-0.5">
+              <motion.div
+                className={cn(
+                  "h-full rounded-full bg-gradient-to-r",
+                  suspicion >= 75 ? "from-amber-500 to-red-500" :
+                  suspicion >= 40 ? "from-emerald-500 to-amber-500" :
+                  "from-cyan-500 to-emerald-500"
+                )}
+                initial={{ width: "75%" }}
+                animate={{ width: `${suspicion}%` }}
+                transition={{ duration: 0.4 }}
+              />
+            </div>
+
+            <div className="mt-2.5 flex items-center justify-between text-[9px] text-zinc-500 uppercase tracking-widest font-semibold">
+              <span>Innocent</span>
+              <span>Jail Time</span>
+            </div>
           </div>
 
-          {/* Time & Status Card */}
-          <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-950/40 to-orange-950/40 p-6 shadow-xl backdrop-blur-lg">
-            <div className="mb-4 flex items-center gap-2">
-              <Clock className="size-5 text-amber-400" />
-              <h3 className="text-lg font-bold text-amber-300">Time</h3>
-            </div>
-            <div className="text-3xl font-bold text-amber-200">
-              {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, "0")}
-            </div>
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-amber-400/70">Status:</span>
+          {/* Interrogation Room Status Card */}
+          <div className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm space-y-3.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">Case Report</h3>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs border-b border-zinc-900/50 pb-2">
+                <span className="text-zinc-500">Detective Mood</span>
                 <span className={cn(
-                  "font-semibold",
-                  connected ? "text-emerald-400" : "text-red-400"
+                  "font-bold",
+                  suspicion >= 85 ? "text-red-400 animate-pulse" :
+                  suspicion >= 65 ? "text-red-300" :
+                  suspicion >= 45 ? "text-amber-400" :
+                  "text-emerald-400"
                 )}>
-                  {connected ? "Connected" : "Disconnected"}
+                  {getDetectiveMood()}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-amber-400/70">Microphone:</span>
-                <span className={cn(
-                  "font-semibold",
-                  muted ? "text-red-400" : "text-emerald-400"
-                )}>
-                  {muted ? "Muted" : "Active"}
+
+              <div className="flex items-center justify-between text-xs border-b border-zinc-900/50 pb-2">
+                <span className="text-zinc-500">Accuser Impatience</span>
+                <span className="font-semibold text-zinc-300 font-mono">
+                  {suspicion >= 85 ? "CRITICAL" : suspicion >= 60 ? "HIGH" : "MODERATE"}
                 </span>
               </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-500">Credibility Rating</span>
+                <span className="font-bold text-cyan-400 font-mono">
+                  {currentScore.toLocaleString()} pts
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Smaller interactive Voice waveform card */}
+          <div className="flex-1 rounded-xl border border-zinc-900 bg-zinc-950/10 p-5 flex flex-col justify-center items-center backdrop-blur-sm overflow-hidden min-h-[160px]">
+            <div className="w-full flex items-center gap-2 mb-3 self-start">
+              <span className="size-2 rounded-full bg-cyan-500/80 animate-pulse" />
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Lie Detector Feeds</h3>
+            </div>
+            <div className="scale-50 opacity-60">
+              <FloatingBlob
+                isActive={connected}
+                volume={volume}
+                isSpeaking={isAiSpeaking}
+              />
             </div>
           </div>
         </motion.div>
-
-        {/* Error message and retry button - shown at bottom of transcript */}
-        {connectionError && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex flex-col items-center gap-3"
-          >
-            <div className="rounded-xl border border-red-500/30 bg-red-950/40 px-5 py-3 backdrop-blur-sm">
-              <span className="text-sm font-medium text-red-400">{connectionError}</span>
-            </div>
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-violet-500/30 transition-all hover:bg-violet-500"
-              onClick={() => {
-                setConnectionError(null);
-                setIsConnecting(true);
-                hasStartedRef.current = false;
-                hasSentAccusationRef.current = false;
-                firstTurnCompleteRef.current = false;
-                // Trigger reconnection
-                setTimeout(async () => {
-                  try {
-                    await connect();
-                  } catch (e) {
-                    console.error("Retry failed:", e);
-                  }
-                }, 100);
-              }}
-            >
-              🔄 Retry Connection
-            </motion.button>
-          </motion.div>
-        )}
       </main>
-
-      {/* Controls - transparent to show blob behind */}
-      <footer className="relative z-20 border-t border-white/10 bg-black/30 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-center gap-8 px-6 py-6">
-          {/* Mute button */}
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button
-              variant={muted ? "outline" : "destructive"}
-              size="lg"
-              className={cn(
-                "h-16 w-16 rounded-2xl shadow-lg transition-all",
-                muted
-                  ? "border-2 border-zinc-600 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  : "bg-red-600 shadow-red-500/30 hover:bg-red-500"
-              )}
-              onClick={() => setMuted(!muted)}
-              disabled={!connected}
-            >
-              {muted ? <MicOff className="size-7" /> : <Mic className="size-7" />}
-            </Button>
-          </motion.div>
-
-          {/* Connect/Disconnect */}
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button
-              variant="ghost"
-              size="lg"
-              className={cn(
-                "h-20 w-20 rounded-full border-2 shadow-lg transition-all",
-                connected
-                  ? "border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-emerald-500/20 hover:bg-emerald-500/30"
-                  : "border-zinc-500 bg-zinc-800/50 text-zinc-300 hover:border-zinc-400 hover:bg-zinc-700/50"
-              )}
-              onClick={connected ? disconnect : connect}
-            >
-              {connected ? (
-                <Pause className="size-8" />
-              ) : (
-                <Play className="size-8 translate-x-0.5" />
-              )}
-            </Button>
-          </motion.div>
-
-          {/* Placeholder for symmetry */}
-          <div className="h-16 w-16" />
-        </div>
-
-        {!timerStarted ? (
-          <motion.div
-            animate={{
-              scale: [1, 1.02, 1],
-            }}
-            transition={{
-              scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-            }}
-            className="pb-4"
-          >
-            <div className="mx-auto max-w-md rounded-xl bg-amber-500/20 border-2 border-amber-400/50 px-6 py-3 shadow-lg shadow-amber-500/20">
-              <p className="text-center text-base font-bold text-amber-300 uppercase tracking-wide">
-                ⏸️ Game Hasn't Started Yet
-              </p>
-              <p className="mt-1 text-center text-sm font-medium text-amber-400">
-                Wait for the detective to finish the accusation
-              </p>
-            </div>
-          </motion.div>
-        ) : (
-            <p className={cn(
-              "pb-4 text-center text-sm font-medium",
-              connectionError
-                ? "text-red-400"
-              : muted
-                ? "text-orange-400/80"
-                : "text-zinc-300"
-            )}>
-              {connectionError
-                ? "Connection failed. Please check your internet and try again."
-              : muted
-                ? "🔇 Unmute your microphone to speak"
-                : "🎤 Speak clearly to defend yourself"}
-            </p>
-        )}
-      </footer>
     </motion.div>
   );
 }
 
-// ==================== MAIN GAME COMPONENT ====================
+// ==================== MAIN GAME APP ====================
 
 function GameApp() {
   const [phase, setPhase] = useState<GamePhase>("welcome");
   const [crime, setCrime] = useState("");
-  const [timeRemaining, setTimeRemaining] = useState(120);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [suspicion, setSuspicion] = useState(75);
   const [timerStarted, setTimerStarted] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { setConfig, disconnect, connected } = useLiveAPIContext();
 
   const startGame = useCallback(() => {
-    // Pick a random crime
     const randomCrime = CRIMES[Math.floor(Math.random() * CRIMES.length)];
     console.log("[GameApp] Starting game with crime:", randomCrime);
     setCrime(randomCrime);
-    setTimeRemaining(120);
+    setElapsedTime(0);
+    setSuspicion(75); // starts at 75%
     setTimerStarted(false);
 
-    // Configure the AI with detective persona
-    // Using gemini-2.0-flash-live-001 for live streaming
     const gameConfig = {
       model: "models/gemini-2.0-flash-live-001",
       systemInstruction: {
@@ -1826,29 +1568,21 @@ function GameApp() {
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: "Charon", // Deep, dramatic voice
+              voiceName: "Charon",
             },
           },
         },
       },
     };
-    console.log("[GameApp] Setting config:", gameConfig.model);
     setConfig(gameConfig);
-
-    console.log("[GameApp] Transitioning to playing phase");
     setPhase("playing");
   }, [setConfig]);
 
-  // Timer logic - only runs after AI finishes the accusation
+  // Stopwatch ticking logic
   useEffect(() => {
     if (phase === "playing" && timerStarted) {
       timerRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            return 0;
-          }
-          return prev - 1;
-        });
+        setElapsedTime((prev) => prev + 1);
       }, 1000);
 
       return () => {
@@ -1863,7 +1597,7 @@ function GameApp() {
     setTimerStarted(true);
   }, []);
 
-  const handleTimeUp = useCallback(() => {
+  const handleLose = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
@@ -1878,32 +1612,44 @@ function GameApp() {
   }, []);
 
   const handleGoodArgument = useCallback(() => {
-    // Add 15 seconds for each good argument
-    setTimeRemaining((prev) => {
-      const newTime = Math.min(120, prev + 15); // Cap at 2 minutes
-      console.log(`[GameApp] Good argument! Time added. New time: ${newTime}s`);
-      return newTime;
-    });
+    setSuspicion((prev) => Math.max(0, prev - 15));
+  }, []);
+
+  const handleIncreaseImpatience = useCallback((amount: number) => {
+    setSuspicion((prev) => Math.min(100, prev + amount));
   }, []);
 
   const handleRestart = useCallback(() => {
-    // Clear the timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    // Disconnect if connected
     if (connected) {
       disconnect();
     }
     setPhase("welcome");
     setCrime("");
-    setTimeRemaining(120);
+    setElapsedTime(0);
+    setSuspicion(75);
     setTimerStarted(false);
   }, [connected, disconnect]);
 
+  // Compute final score
+  const finalScore = Math.max(0, 2000 - (suspicion * 12) - (elapsedTime * 2));
+
+  // Listen to suspicion triggers
+  useEffect(() => {
+    if (phase === "playing") {
+      if (suspicion >= 100) {
+        handleLose();
+      } else if (suspicion <= 0) {
+        handleWin();
+      }
+    }
+  }, [suspicion, phase, handleWin, handleLose]);
+
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white selection:bg-violet-950 selection:text-white">
       <AnimatePresence mode="wait">
         {phase === "welcome" && (
           <WelcomeScreen key="welcome" onStart={startGame} />
@@ -1913,11 +1659,13 @@ function GameApp() {
           <GameScreen
             key="playing"
             crime={crime}
-            timeRemaining={timeRemaining}
-            onTimeUp={handleTimeUp}
+            elapsedTime={elapsedTime}
+            suspicion={suspicion}
             onWin={handleWin}
+            onLose={handleLose}
             onTimerStart={handleTimerStart}
             onGoodArgument={handleGoodArgument}
+            onIncreaseImpatience={handleIncreaseImpatience}
             timerStarted={timerStarted}
           />
         )}
@@ -1929,6 +1677,8 @@ function GameApp() {
             key="result"
             won={phase === "won"}
             crime={crime}
+            score={finalScore}
+            elapsedTime={elapsedTime}
             onRestart={handleRestart}
           />
         )}
@@ -1965,28 +1715,28 @@ function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => void })
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm px-4"
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-md rounded-2xl border border-violet-500/20 bg-gradient-to-br from-zinc-900/95 to-zinc-800/95 p-8 shadow-2xl backdrop-blur-xl"
+        className="w-full max-w-md rounded-2xl border border-zinc-900 bg-zinc-950 p-8 shadow-2xl backdrop-blur-xl"
       >
         <div className="mb-6 text-center">
           <div className="mb-4 flex justify-center">
-            <div className="rounded-full bg-violet-500/20 p-4">
+            <div className="rounded-full bg-violet-950/40 p-4 border border-violet-500/20">
               <AlertTriangle className="size-8 text-violet-400" />
             </div>
           </div>
-          <h2 className="mb-2 text-2xl font-bold text-white">API Key Required</h2>
-          <p className="text-sm text-zinc-400">
-            Enter your Google Gemini API key to start playing
+          <h2 className="mb-2 text-2xl font-bold text-white tracking-tight">API Key Required</h2>
+          <p className="text-sm text-zinc-500">
+            Enter your Google Gemini API key to enter the room
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="api-key" className="mb-2 block text-sm font-medium text-zinc-300">
+            <label htmlFor="api-key" className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">
               Google Gemini API Key
             </label>
             <Input
@@ -1999,15 +1749,15 @@ function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => void })
               }}
               placeholder="AIzaSy..."
               className={cn(
-                "w-full bg-zinc-800/50 text-white placeholder:text-zinc-500",
-                error && "border-red-500 focus:border-red-500"
+                "w-full bg-black/40 border-zinc-800 text-white placeholder:text-zinc-700",
+                error && "border-red-500/50 focus:border-red-500"
               )}
             />
             {error && (
-              <p className="mt-2 text-sm text-red-400">{error}</p>
+              <p className="mt-2 text-xs text-red-400 font-medium">{error}</p>
             )}
-            <p className="mt-2 text-xs text-zinc-500">
-              Get your API key from{" "}
+            <p className="mt-2 text-[10px] text-zinc-600">
+              Your key is only saved in memory and sent directly to Google AI servers. Get one from{" "}
               <a
                 href="https://aistudio.google.com/app/apikey"
                 target="_blank"
@@ -2021,10 +1771,9 @@ function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => void })
 
           <Button
             type="submit"
-            className="w-full bg-violet-600 hover:bg-violet-500 text-white"
-            size="lg"
+            className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold h-12"
           >
-            Start Game
+            Connect to Interrogation Room
           </Button>
         </form>
       </motion.div>
@@ -2032,7 +1781,7 @@ function ApiKeyModal({ onApiKeySet }: { onApiKeySet: (apiKey: string) => void })
   );
 }
 
-// ==================== MAIN PAGE COMPONENT ====================
+// ==================== ENTRYPOINT ====================
 
 export default function GamePage() {
   const [apiKey, setApiKey] = useState<string | null>(null);
