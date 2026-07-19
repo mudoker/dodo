@@ -2,10 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Gauge } from "lucide-react";
+import { Activity, Gauge } from "lucide-react";
 import { DetectiveProfile } from "./detective-profile";
-import { EqualizerWaveform } from "./equalizer-waveform";
-import { FloatingBlob } from "./floating-blob";
 
 export function GameHud({
   suspicion,
@@ -47,11 +45,55 @@ export function GameHud({
         </div>
       </div>
 
-      {/* Voice Analyzer card */}
-      <div className="flex-1 rounded-xl border border-zinc-900 bg-zinc-950/10 p-5 flex flex-col justify-between items-center backdrop-blur-sm overflow-hidden min-h-[180px] shadow-xl">
-        <div className="w-full flex items-center gap-2 mb-2 self-start"><span className={cn("size-2 rounded-full bg-cyan-500/85", connected && "animate-pulse")} /><h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Voice Analyzer</h3></div>
-        <EqualizerWaveform isSpeaking={isAiSpeaking} isActive={connected && !muted} />
-        <div className="scale-35 opacity-30 -my-6"><FloatingBlob isActive={connected} volume={volume} isSpeaking={isAiSpeaking} /></div>
+      {/* Vocal Stress & Biometrics Card */}
+      <div className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm space-y-4 shadow-xl text-xs">
+        <div className="w-full flex items-center justify-between border-b border-zinc-900 pb-2">
+          <div className="flex items-center gap-2">
+            <Activity className={cn("size-4 text-cyan-400", connected && !muted && "animate-pulse")} />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-350">Biometric Scan</h3>
+          </div>
+          <span className={cn("text-[9px] px-1.5 py-0.5 rounded font-black tracking-wider uppercase", !connected ? "bg-zinc-900 text-zinc-550" : muted ? "bg-amber-950/40 text-amber-500" : "bg-cyan-950/40 text-cyan-400 animate-pulse")}>
+            {!connected ? "Offline" : muted ? "Muted" : "Active"}
+          </span>
+        </div>
+
+        {/* Dynamic EKG Stress wave */}
+        <div className="relative h-12 w-full bg-black/45 border border-zinc-900/60 rounded-lg overflow-hidden flex items-center justify-center">
+          {connected && !muted ? (
+            <svg viewBox="0 0 100 30" className="w-full h-12 text-cyan-500/50 stroke-current stroke-[1.5] fill-none">
+              <motion.path
+                d="M 0,15 L 20,15 L 23,8 L 26,22 L 29,15 L 45,15 L 48,5 L 52,25 L 56,15 L 75,15 L 78,8 L 81,22 L 84,15 L 100,15"
+                animate={{
+                  strokeDashoffset: [120, 0],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 2,
+                  ease: "linear",
+                }}
+                strokeDasharray="20 10"
+              />
+            </svg>
+          ) : (
+            <div className="text-[10px] text-zinc-600 font-mono tracking-widest uppercase animate-pulse">Scanner Standby</div>
+          )}
+        </div>
+
+        {/* Stress Metrics */}
+        <div className="grid grid-cols-2 gap-4 text-[10px] text-zinc-400">
+          <div className="space-y-0.5">
+            <span className="text-zinc-600 uppercase block font-semibold">Stress Level</span>
+            <span className={cn("font-bold text-sm font-mono", !connected ? "text-zinc-550" : suspicion >= 80 ? "text-red-400 animate-pulse" : suspicion >= 50 ? "text-amber-400" : "text-cyan-400")}>
+              {!connected ? "0.00" : (suspicion * 0.93 + (isAiSpeaking ? 4.2 : 0)).toFixed(2)}%
+            </span>
+          </div>
+          <div className="space-y-0.5 text-right">
+            <span className="text-zinc-600 uppercase block font-semibold">Truth Credibility</span>
+            <span className={cn("font-bold text-sm font-mono", !connected ? "text-zinc-550" : (100 - suspicion) <= 25 ? "text-red-400 animate-pulse" : (100 - suspicion) <= 50 ? "text-amber-400" : "text-emerald-400")}>
+              {!connected ? "0.00" : (100 - suspicion).toFixed(2)}%
+            </span>
+          </div>
+        </div>
       </div>
     </motion.div>
   );
