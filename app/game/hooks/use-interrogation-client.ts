@@ -160,7 +160,21 @@ export function useInterrogationClient({
       isAwaitingResponseRef.current = false;
       setIsAwaitingResponse(false);
       setPendingFirstTurnComplete(false);
+      // Set ref directly — avoids the 1-2 React render lag during which
+      // onVolume could fire sendActivityStart and trigger server interruption
+      isAiSpeakingRef.current = true;
       setIsAiSpeaking(true);
+      // Cancel any user activity in flight so it cannot interrupt the AI
+      if (userActivityStartedRef.current) {
+        userActivityStartedRef.current = false;
+        try { client.sendActivityEnd(); } catch {}
+      }
+      speechStartFramesRef.current = 0;
+      preSpeechChunksRef.current = [];
+      if (silenceCommitTimerRef.current) {
+        clearTimeout(silenceCommitTimerRef.current);
+        silenceCommitTimerRef.current = null;
+      }
     };
     const handleContent = (content: any) => {
       const text = content?.modelTurn?.parts?.filter((p: any) => typeof p.text === "string").map((p: any) => p.text).join("") || "";
@@ -326,17 +340,22 @@ export function useInterrogationClient({
 
       if (nextVolume > speechStartThreshold) {
         if (!userActivityStartedRef.current && !isAwaitingResponseRef.current && !isAiSpeakingRef.current) {
+          // Also enforce cooldown here — onVolume runs off a worklet timer,
+          // not React state, so isAiSpeakingRef may still be stale
+          if (now - aiStoppedSpeakingAtRef.current < AI_SPEECH_COOLDOWN_MS) {
+            speechStartFramesRef.current = 0;
+            return;
+          }
           speechStartFramesRef.current += 1;
           if (speechStartFramesRef.current < SPEECH_START_FRAMES) return;
 
           userActivityStartedRef.current = true;
           userActivityStartedAtRef.current = now;
+          // Do NOT flush pre-speech chunks here — they were captured while AI
+          // may have been speaking and would immediately trigger 'interrupted'
+          preSpeechChunksRef.current = [];
           try {
             client.sendActivityStart();
-            preSpeechChunksRef.current.forEach((data) => {
-              client.sendRealtimeInput([{ mimeType: "audio/pcm;rate=16000", data }]);
-            });
-            preSpeechChunksRef.current = [];
           } catch {
             userActivityStartedRef.current = false;
             audioRecorder.stop();
