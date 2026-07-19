@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Gauge, Info, MessageSquare, Mic, MicOff, Pause, Play, Send, ShieldAlert, Zap } from "lucide-react";
+import { Info, Mic, MicOff, Pause, Play, Send, ShieldAlert, Terminal, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useInterrogationClient } from "../hooks/use-interrogation-client";
-import { DetectiveProfile } from "./detective-profile";
-import { EqualizerWaveform } from "./equalizer-waveform";
 import { FloatingBlob } from "./floating-blob";
+import { GameHeader } from "./game-header";
+import { GameHud } from "./game-hud";
 
 export function GameScreen({
   crime,
@@ -69,37 +69,12 @@ export function GameScreen({
       <div className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center opacity-30 blur-2xl">
         <FloatingBlob isActive={connected} volume={volume} isSpeaking={isAiSpeaking} />
       </div>
-      <div className="pointer-events-none fixed inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.6)_95%)]" />
+      {/* Tactical Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0b0b0f_1px,transparent_1px),linear-gradient(to_bottom,#0b0b0f_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 pointer-events-none z-[1]" />
+      <div className="pointer-events-none fixed inset-0 z-[2] bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.6)_95%)]" />
 
       {/* Header */}
-      <header className="relative z-20 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <motion.div className="absolute -inset-2 rounded-full bg-red-500/10 blur-md" animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }} transition={{ duration: 2.5, repeat: Infinity }} />
-                <AlertTriangle className="relative size-6 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-              </div>
-              <span className="font-mono text-xl font-bold tracking-tighter text-white">DoDo</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onChangeKey}
-              className="text-zinc-500 hover:text-red-400 gap-1.5 h-8 px-2 text-[9px] uppercase font-bold tracking-wider hover:bg-zinc-950 border border-zinc-900"
-            >
-              <span>Reset Key</span>
-            </Button>
-          </div>
-          <div className="flex flex-col items-end">
-            <span className="font-mono text-2xl font-bold text-white">{String(Math.floor(elapsedTime / 60)).padStart(2, "0")}:{String(elapsedTime % 60).padStart(2, "0")}</span>
-            <span className="text-[9px] uppercase tracking-widest text-cyan-450/70 font-semibold">Active Stopwatch</span>
-          </div>
-        </div>
-        <div className="border-t border-zinc-900 bg-zinc-950/20 px-6 py-2">
-          <p className="mx-auto max-w-6xl text-center text-xs text-zinc-400"><span className="font-black text-red-500 uppercase">Charges:</span> "{crime}"</p>
-        </div>
-      </header>
+      <GameHeader elapsedTime={elapsedTime} crime={crime} onChangeKey={onChangeKey} />
 
       {/* Innocence Gain Alert */}
       <AnimatePresence>
@@ -130,7 +105,32 @@ export function GameScreen({
           </div>
           
           <div className="flex-1 overflow-y-auto space-y-4 pr-3 pb-4 scrollbar bg-zinc-950/10 p-5 shadow-inner select-text">
-            {chatHistory.length === 0 && !isConnecting && <div className="flex h-full flex-col items-center justify-center text-center text-zinc-500 space-y-3"><MessageSquare className="size-10 text-zinc-700 animate-pulse" /><p className="font-semibold text-zinc-400 text-sm">Room Offline. Wait for accusation.</p></div>}
+            {chatHistory.length === 0 && !isConnecting && (
+              <div className="flex h-full flex-col items-center justify-center text-center text-zinc-500 space-y-6">
+                <div className="relative flex items-center justify-center">
+                  <motion.div
+                    className="absolute size-24 rounded-full border border-violet-500/20"
+                    animate={{ scale: [1, 1.4, 1], opacity: [0.1, 0.4, 0.1] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                  />
+                  <motion.div
+                    className="absolute size-16 rounded-full border border-cyan-500/25"
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+                  />
+                  <div className="relative size-10 rounded-full bg-zinc-950 border border-zinc-900 flex items-center justify-center">
+                    <Terminal className="size-4.5 text-violet-400 animate-pulse" />
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <p className="font-mono text-[10px] font-bold text-zinc-300 uppercase tracking-widest animate-pulse">ESTABLISHING AUDIO TRANSMISSION</p>
+                  <p className="text-[9px] text-zinc-500 max-w-xs leading-normal">
+                    Secure satellite uplink handshaking... please standby for detective accusation feed.
+                  </p>
+                </div>
+              </div>
+            )}
             {isConnecting && <div className="flex h-full flex-col items-center justify-center text-center text-amber-500 space-y-3 animate-pulse"><div className="size-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" /><p className="text-xs font-bold uppercase">Connecting...</p></div>}
             {chatHistory.map((msg) => (
               <motion.div key={msg.id} initial={{ opacity: 0, y: 20, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 18 }} className={cn("flex w-full flex-col", msg.sender === "detective" ? "items-start" : "items-end")}>
@@ -151,7 +151,27 @@ export function GameScreen({
             <div className="mt-3 flex items-center justify-between border-t border-zinc-900 pt-3">
               <div className="flex items-center gap-2">
                 <Button variant={muted ? "outline" : "destructive"} size="sm" onClick={() => setMuted(!muted)} disabled={!connected} className={cn("h-9 px-3 text-xs gap-1.5 font-bold transition-all", muted ? "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800" : "bg-red-950/30 border-red-500/20 text-red-400 hover:bg-red-900/30")}>{muted ? <MicOff className="size-3.5" /> : <Mic className="size-3.5" />}<span>{muted ? "Unmute" : "Mute"}</span></Button>
-                <Button variant="ghost" size="sm" onClick={connected ? disconnect : connect} className={cn("h-9 px-3 text-xs gap-1.5 font-bold border", connected ? "border-emerald-500/20 bg-emerald-950/10 text-emerald-400" : "border-zinc-800 bg-zinc-900/50 text-zinc-400")}>{connected ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}<span>{connected ? "Disconnect" : "Connect"}</span></Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={connected ? disconnect : connect}
+                  disabled={isConnecting}
+                  className={cn(
+                    "h-9 px-3 text-xs gap-1.5 font-bold border transition-all",
+                    connected
+                      ? "border-emerald-500/20 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-900/20"
+                      : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800"
+                  )}
+                >
+                  {isConnecting ? (
+                    <div className="size-3.5 rounded-full border border-zinc-650 border-t-zinc-400 animate-spin" />
+                  ) : connected ? (
+                    <Pause className="size-3.5" />
+                  ) : (
+                    <Play className="size-3.5" />
+                  )}
+                  <span>{isConnecting ? "Connecting..." : connected ? "Disconnect" : "Connect"}</span>
+                </Button>
               </div>
               <span className={cn("text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5", connectionError ? "text-red-400" : !connected ? "text-zinc-600" : isAiSpeaking ? "text-violet-400" : muted ? "text-orange-400" : "text-emerald-400")}>
                 {connectionError ? <><ShieldAlert className="size-3.5" /><span onClick={triggerRetry} className="cursor-pointer underline">Error (Retry)</span></> : !connected ? <><Info className="size-3.5" /><span>Offline</span></> : isAiSpeaking ? <><span className="size-1.5 rounded-full bg-violet-400 animate-ping" /><span>Detective Replies</span></> : muted ? <><MicOff className="size-3.5" /><span>Muted</span></> : <><span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" /><span>Active Mic</span></>}
@@ -160,32 +180,16 @@ export function GameScreen({
           </div>
         </div>
 
-        {/* Right Side: HUD Panel */}
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full lg:w-72 flex flex-col gap-4">
-          <DetectiveProfile mood={getDetectiveMood()} suspicion={suspicion} isSpeaking={isAiSpeaking} />
-          <motion.div key={suspicion} animate={{ scale: [1, 1.02, 1] }} transition={{ duration: 0.3 }} className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm">
-            <div className="mb-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-2"><Gauge className="size-4.5 text-zinc-400" /><h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">Suspicion</h3></div>
-              <span className={cn("text-xs font-black px-2 py-0.5 rounded-md font-mono", suspicion >= 80 ? "bg-red-950 text-red-400" : suspicion >= 50 ? "bg-amber-950 text-amber-400" : "bg-emerald-950 text-emerald-400")}>{suspicion}%</span>
-            </div>
-            <div className="h-3 w-full rounded-full bg-zinc-950 overflow-hidden border border-zinc-900 p-0.5"><motion.div className={cn("h-full rounded-full bg-gradient-to-r", suspicion >= 75 ? "from-amber-500 to-red-500" : suspicion >= 40 ? "from-emerald-500 to-amber-500" : "from-cyan-500 to-emerald-500")} initial={{ width: "75%" }} animate={{ width: `${suspicion}%` }} transition={{ duration: 0.4 }} /></div>
-            <div className="mt-2.5 flex items-center justify-between text-[9px] text-zinc-500 uppercase tracking-widest font-semibold"><span>Innocent</span><span>Locked Up</span></div>
-          </motion.div>
-
-          <div className="rounded-xl border border-zinc-900 bg-zinc-950/30 p-5 backdrop-blur-sm space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">Case Report</h3>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs border-b border-zinc-900/50 pb-2"><span className="text-zinc-500">Detective Mood</span><span className={cn("font-bold", suspicion >= 85 ? "text-red-400 animate-pulse" : suspicion >= 65 ? "text-red-300" : suspicion >= 45 ? "text-amber-400" : "text-emerald-400")}>{getDetectiveMood()}</span></div>
-              <div className="flex items-center justify-between text-xs"><span className="text-zinc-500">Score Rating</span><span className="font-bold text-cyan-400 font-mono">{currentScore.toLocaleString()} pts</span></div>
-            </div>
-          </div>
-
-          <div className="flex-1 rounded-xl border border-zinc-900 bg-zinc-950/10 p-5 flex flex-col justify-between items-center backdrop-blur-sm overflow-hidden min-h-[180px]">
-            <div className="w-full flex items-center gap-2 mb-2 self-start"><span className={cn("size-2 rounded-full bg-cyan-500/85", connected && "animate-pulse")} /><h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Voice Analyzer</h3></div>
-            <EqualizerWaveform isSpeaking={isAiSpeaking} isActive={connected && !muted} />
-            <div className="scale-35 opacity-30 -my-6"><FloatingBlob isActive={connected} volume={volume} isSpeaking={isAiSpeaking} /></div>
-          </div>
-        </motion.div>
+        {/* Right Side HUD Panel */}
+        <GameHud
+          suspicion={suspicion}
+          mood={getDetectiveMood()}
+          score={currentScore}
+          isAiSpeaking={isAiSpeaking}
+          connected={connected}
+          volume={volume}
+          muted={muted}
+        />
       </main>
     </motion.div>
   );

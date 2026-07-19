@@ -1,6 +1,7 @@
 "use client";
 
 import { LiveAPIProvider, useLiveAPIContext } from "@/hooks/use-live-api";
+import { audioContext } from "@/app/audio/utils";
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiKeyModal } from "./components/api-key-modal";
@@ -21,6 +22,15 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
   const { setConfig, disconnect, connected } = useLiveAPIContext();
 
   const startGame = useCallback(() => {
+    // Proactively resume audio context inside user gesture click
+    if (typeof window !== "undefined") {
+      audioContext({ id: "audio-out" }).then((ctx) => {
+        if (ctx.state === "suspended") {
+          ctx.resume().catch((e) => console.warn("Failed to resume AudioContext:", e));
+        }
+      }).catch((e) => console.warn("Failed to access AudioContext:", e));
+    }
+
     const randomCrime = CRIMES[Math.floor(Math.random() * CRIMES.length)];
     setCrime(randomCrime);
     setElapsedTime(0);

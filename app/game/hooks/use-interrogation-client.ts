@@ -11,7 +11,7 @@ export function useInterrogationClient({
   crime: string; timerStarted: boolean; onTimerStart: () => void; onGoodArgument: () => void;
   onIncreaseImpatience: (amount: number) => void; onWin: () => void; onLose: () => void;
 }) {
-  const { client, connected, connect, disconnect, volume } = useLiveAPIContext();
+  const { client, connected, connect, disconnect, volume, config } = useLiveAPIContext();
   const [audioRecorder] = useState(() => new AudioRecorder());
   const [muted, setMuted] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -28,6 +28,28 @@ export function useInterrogationClient({
   const userSpokeRef = useRef(false);
 
   useEffect(() => { transcriptRef.current = currentTranscript; }, [currentTranscript]);
+
+  const isConfigReady = config.model === "models/gemini-2.0-flash-live-001" && config.systemInstruction?.parts?.[0]?.text?.includes("Grimstone");
+
+  // Automatic connection on mount when config is ready
+  useEffect(() => {
+    if (isConfigReady && !connected && !isConnecting && !connectionError && !hasStartedRef.current) {
+      hasStartedRef.current = true;
+      setIsConnecting(true);
+      const timer = setTimeout(async () => {
+        try {
+          console.log("[useInterrogationClient] Auto-connecting with detective config...");
+          await connect();
+        } catch (error) {
+          console.error("[useInterrogationClient] Auto-connection failed:", error);
+          setConnectionError(error instanceof Error ? error.message : "Connection failed");
+          setIsConnecting(false);
+          hasStartedRef.current = false; // allow manual retry
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [connect, isConfigReady, connected, isConnecting, connectionError]);
 
   // Connection timeout check
   useEffect(() => {
@@ -121,20 +143,7 @@ export function useInterrogationClient({
     return () => { audioRecorder.off("data", onData); };
   }, [connected, client, muted, audioRecorder, timerStarted]);
 
-  useEffect(() => {
-    if (!hasStartedRef.current) {
-      hasStartedRef.current = true;
-      setIsConnecting(true);
-      const timer = setTimeout(async () => {
-        try { await connect(); } catch (error) {
-          setConnectionError(error instanceof Error ? error.message : "Connection failed");
-          setIsConnecting(false);
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [connect]);
-
+  // Connection status sync
   useEffect(() => { if (connected) { setIsConnecting(false); setConnectionError(null); } }, [connected]);
 
   useEffect(() => {
