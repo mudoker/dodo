@@ -62,7 +62,7 @@ export function useLiveAPI({
 
   const [connected, setConnected] = useState(false);
   const [config, setConfig] = useState<LiveConfig>({
-    model: 'models/gemini-2.5-flash-lite',
+    model: 'models/gemini-2.0-flash',
     systemInstruction: {
       parts: [
         {
@@ -129,7 +129,21 @@ export function useLiveAPI({
       console.log("[useLiveAPI] client.connect succeeded!");
       setConnected(true);
     } catch (error) {
-      console.error("[useLiveAPI] client.connect failed:", error);
+      console.warn("[useLiveAPI] client.connect failed:", error);
+      if (config.model.includes("gemini-2.0-flash")) {
+        const fallbackModel = config.model.replace("gemini-2.0-flash", "gemini-2.5-flash");
+        console.log(`[useLiveAPI] Triggering fallback with model: ${fallbackModel}`);
+        const fallbackConfig = { ...config, model: fallbackModel };
+        try {
+          await client.connect(fallbackConfig);
+          setConfig(fallbackConfig);
+          setConnected(true);
+          return;
+        } catch (fallbackError) {
+          console.error("[useLiveAPI] Fallback failed:", fallbackError);
+          throw fallbackError;
+        }
+      }
       throw error;
     }
   }, [client, config]);
