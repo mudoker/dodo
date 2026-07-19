@@ -123,7 +123,7 @@ export function ResultScreen({
         </h2>
 
         <p className="mb-6 text-sm text-zinc-400">
-          {won ? "Detective Grimstone reluctantly admitted he has the wrong suspect." : "Status failed. You surrendered the interrogation and accepted the guilty verdict for:"}
+          {won ? "Detective Grimstone reluctantly admitted he has the wrong suspect." : "Status failed. Grimstone forced a guilty verdict for:"}
         </p>
 
         {/* Case Info Panel */}

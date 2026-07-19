@@ -164,11 +164,10 @@ export function useInterrogationClient({
       // onVolume could fire sendActivityStart and trigger server interruption
       isAiSpeakingRef.current = true;
       setIsAiSpeaking(true);
-      // Cancel any user activity in flight so it cannot interrupt the AI
-      if (userActivityStartedRef.current) {
-        userActivityStartedRef.current = false;
-        try { client.sendActivityEnd(); } catch {}
-      }
+      // Cancel local user capture state without sending another activity marker
+      // into an assistant turn. Sending one here can interrupt native audio.
+      userActivityStartedRef.current = false;
+      userActivityStartedAtRef.current = 0;
       speechStartFramesRef.current = 0;
       preSpeechChunksRef.current = [];
       if (silenceCommitTimerRef.current) {
@@ -210,7 +209,6 @@ export function useInterrogationClient({
       }
       const trans = transcriptRef.current.toLowerCase();
       if (["free to go", "wrong person", "case dismissed", "let you go", "dropping the charges"].some(p => trans.includes(p))) { onWin(); return; }
-      if (["going down", "going to jail", "lock you up", "guilty as charged", "sending you to prison"].some(p => trans.includes(p))) { onLose(); return; }
 
       const isGood = [
         "oh please", "that's pathetic", "nice try", "you think", "how adorable", "spare me", "weak",
@@ -257,6 +255,7 @@ export function useInterrogationClient({
 
     // Record the exact moment the AI stopped — used for cooldown guard in onData
     aiStoppedSpeakingAtRef.current = Date.now();
+    isAiSpeakingRef.current = false;
     setIsAiSpeaking(false);
     if (pendingFirstTurnComplete && !firstTurnCompleteRef.current) {
       firstTurnCompleteRef.current = true;
@@ -387,7 +386,7 @@ export function useInterrogationClient({
         endUserActivity();
       }
     };
-    if (connected && !muted && audioRecorder && micArmed) {
+    if (connected && !muted && audioRecorder && micArmed && !isAiSpeaking && !outputPlaying && !isAwaitingResponse) {
       const nextInputDeviceId = selectedInputDeviceId || undefined;
       if (audioRecorder.recording && activeInputDeviceIdRef.current !== nextInputDeviceId) {
         audioRecorder.stop();
@@ -409,8 +408,10 @@ export function useInterrogationClient({
       speechStartFramesRef.current = 0;
       preSpeechChunksRef.current = [];
       setInputVolume(0);
-      isAwaitingResponseRef.current = false;
-      setIsAwaitingResponse(false);
+      if (!connected || muted || !micArmed) {
+        isAwaitingResponseRef.current = false;
+        setIsAwaitingResponse(false);
+      }
       if (silenceCommitTimerRef.current) {
         clearTimeout(silenceCommitTimerRef.current);
         silenceCommitTimerRef.current = null;
@@ -423,7 +424,7 @@ export function useInterrogationClient({
         silenceCommitTimerRef.current = null;
       }
     };
-  }, [connected, client, muted, audioRecorder, micArmed, selectedInputDeviceId, refreshAudioDevices]);
+  }, [connected, client, muted, audioRecorder, micArmed, isAiSpeaking, outputPlaying, isAwaitingResponse, selectedInputDeviceId, refreshAudioDevices]);
 
   // Connection status sync
   useEffect(() => {
