@@ -38,7 +38,7 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
     setTimerStarted(false);
 
     const gameConfig = {
-      model: "models/gemini-2.5-flash-live-preview",
+      model: "models/gemini-2.5-flash-lite",
       systemInstruction: { parts: [{ text: DETECTIVE_SYSTEM_PROMPT }] },
       generationConfig: {
         responseModalities: "audio" as const,

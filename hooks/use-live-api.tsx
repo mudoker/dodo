@@ -62,7 +62,7 @@ export function useLiveAPI({
 
   const [connected, setConnected] = useState(false);
   const [config, setConfig] = useState<LiveConfig>({
-    model: 'models/gemini-2.5-flash-live-preview',
+    model: 'models/gemini-2.5-flash-lite',
     systemInstruction: {
       parts: [
         {
