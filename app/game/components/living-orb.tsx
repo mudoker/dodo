@@ -36,10 +36,10 @@ function getStateAccent(state: OrbState, suspicion: number) {
 
   if (suspicion >= 80) {
     return {
-      core: "rgba(255, 196, 87, 0.92)",
-      secondary: "rgba(236, 72, 153, 0.82)",
-      aura: "rgba(245, 158, 11, 0.42)",
-      ring: "rgba(251, 191, 36, 0.42)",
+      core: "rgba(255, 105, 48, 0.96)",
+      secondary: "rgba(239, 68, 68, 0.9)",
+      aura: "rgba(239, 68, 68, 0.52)",
+      ring: "rgba(251, 113, 133, 0.58)",
       label: "text-amber-300",
     };
   }
@@ -81,9 +81,11 @@ function drawOrb(
   const isTalking = state === "talking";
   const isListening = state === "listening";
   const isError = state === "error";
+  const hostility = Math.min(1, Math.max(0, suspicion / 100));
   const energy = Math.min(1, Math.max(0, volume * 9 + (isTalking ? 0.26 : 0)));
-  const breathe = isListening ? 0 : Math.sin(time * 1.45) * 0.018;
-  const baseRadius = 136 * unit * (1 + breathe + energy * 0.12);
+  const agitation = 1 + hostility * 1.35 + (isTalking ? energy * 0.75 : 0);
+  const breathe = isListening ? 0 : Math.sin(time * (1.25 + hostility * 0.75)) * (0.014 + hostility * 0.008);
+  const baseRadius = 136 * unit * (1 + breathe + energy * 0.12 + hostility * 0.025);
 
   context.clearRect(0, 0, width, height);
   context.globalCompositeOperation = "source-over";
@@ -99,8 +101,8 @@ function drawOrb(
 
   const outerGlow = context.createRadialGradient(centerX, centerY, baseRadius * 0.35, centerX, centerY, baseRadius * 2.2);
   outerGlow.addColorStop(0, accent.aura);
-  outerGlow.addColorStop(0.42, "rgba(147, 51, 234, 0.16)");
-  outerGlow.addColorStop(0.72, "rgba(34, 211, 238, 0.06)");
+  outerGlow.addColorStop(0.34, hostility > 0.78 ? "rgba(249, 115, 22, 0.2)" : "rgba(147, 51, 234, 0.16)");
+  outerGlow.addColorStop(0.68, hostility > 0.78 ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 211, 238, 0.06)");
   outerGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
   context.fillStyle = outerGlow;
   context.beginPath();
@@ -109,7 +111,7 @@ function drawOrb(
 
   context.save();
   context.translate(centerX, centerY);
-  context.rotate(time * (isTalking ? 0.34 : 0.12));
+  context.rotate(time * (isTalking ? 0.34 + hostility * 0.28 : 0.12 + hostility * 0.16));
   for (let ring = 0; ring < 3; ring += 1) {
     const ringRadiusX = (188 + ring * 20 + energy * 18) * unit;
     const ringRadiusY = (46 + ring * 8) * unit;
@@ -129,11 +131,12 @@ function drawOrb(
   const points = 180;
   for (let i = 0; i <= points; i += 1) {
     const angle = (i / points) * TWO_PI;
-    const lowWave = Math.sin(angle * 3 + time * 1.3) * 4.5 * unit;
-    const midWave = Math.sin(angle * 7 - time * 2.1) * 2.8 * unit;
-    const sharpWave = isTalking ? Math.max(0, Math.sin(angle * 17 + time * 9)) * energy * 24 * unit : 0;
+    const lowWave = Math.sin(angle * 3 + time * 1.3 * agitation) * (4.5 + hostility * 4) * unit;
+    const midWave = Math.sin(angle * 7 - time * 2.1 * agitation) * (2.8 + hostility * 3.2) * unit;
+    const hostilitySpike = Math.max(0, Math.sin(angle * 13 + time * 5.2 * agitation)) * hostility * 8 * unit;
+    const sharpWave = isTalking ? Math.max(0, Math.sin(angle * 17 + time * 9 * agitation)) * energy * 24 * unit : 0;
     const errorDent = isError ? Math.sin(angle * 10 + time * 6) * 7 * unit : 0;
-    const radius = baseRadius + lowWave + midWave + sharpWave + errorDent;
+    const radius = baseRadius + lowWave + midWave + hostilitySpike + sharpWave + errorDent;
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
     if (i === 0) context.moveTo(x, y);
@@ -142,8 +145,8 @@ function drawOrb(
   context.closePath();
   context.clip();
 
-  const coreDriftX = Math.sin(time * 0.44) * 38 * unit + Math.sin(time * 0.91) * 14 * unit;
-  const coreDriftY = Math.cos(time * 0.39) * 30 * unit + Math.sin(time * 0.76) * 12 * unit;
+  const coreDriftX = Math.sin(time * 0.44 * agitation) * (32 + hostility * 22) * unit + Math.sin(time * 0.91 * agitation) * (12 + hostility * 10) * unit;
+  const coreDriftY = Math.cos(time * 0.39 * agitation) * (26 + hostility * 18) * unit + Math.sin(time * 0.76 * agitation) * (10 + hostility * 9) * unit;
   const coreGradient = context.createRadialGradient(coreDriftX - 42 * unit, coreDriftY - 52 * unit, 8 * unit, coreDriftX, coreDriftY, baseRadius * 1.12);
   coreGradient.addColorStop(0, "rgba(255, 255, 255, 0.95)");
   coreGradient.addColorStop(0.16, isListening ? "rgba(219, 234, 254, 0.92)" : accent.core);
@@ -161,7 +164,7 @@ function drawOrb(
     const x = Math.cos(angle) * distance * 0.72;
     const y = Math.sin(angle * 0.86) * distance * 0.7;
     const blob = context.createRadialGradient(x, y, 0, x, y, blobRadius);
-    blob.addColorStop(0, i % 3 === 0 ? accent.core : i % 3 === 1 ? "rgba(34, 211, 238, 0.55)" : "rgba(236, 72, 153, 0.52)");
+    blob.addColorStop(0, i % 3 === 0 ? accent.core : i % 3 === 1 ? (hostility > 0.78 ? "rgba(251, 146, 60, 0.6)" : "rgba(34, 211, 238, 0.55)") : "rgba(236, 72, 153, 0.52)");
     blob.addColorStop(1, "rgba(0, 0, 0, 0)");
     context.fillStyle = blob;
     context.beginPath();
@@ -179,14 +182,14 @@ function drawOrb(
   }
 
   context.globalCompositeOperation = "screen";
-  const pearlX = Math.sin(time * 0.86) * 46 * unit + Math.sin(time * 1.57) * 14 * unit;
-  const pearlY = Math.cos(time * 0.68) * 34 * unit + Math.sin(time * 1.21) * 12 * unit;
-  const pearlRadius = (48 + energy * 16) * unit;
+  const pearlX = Math.sin(time * 0.86 * agitation) * (38 + hostility * 20) * unit + Math.sin(time * 1.57 * agitation) * (12 + hostility * 10) * unit;
+  const pearlY = Math.cos(time * 0.68 * agitation) * (30 + hostility * 16) * unit + Math.sin(time * 1.21 * agitation) * (10 + hostility * 8) * unit;
+  const pearlRadius = (46 + energy * 16 + hostility * 6) * unit;
   const centeredPearl = context.createRadialGradient(pearlX, pearlY, 0, pearlX, pearlY, pearlRadius);
   centeredPearl.addColorStop(0, "rgba(255, 246, 225, 0.84)");
-  centeredPearl.addColorStop(0.22, "rgba(45, 212, 191, 0.52)");
-  centeredPearl.addColorStop(0.48, "rgba(217, 70, 239, 0.34)");
-  centeredPearl.addColorStop(0.7, "rgba(251, 191, 36, 0.2)");
+  centeredPearl.addColorStop(0.22, hostility > 0.78 ? "rgba(251, 146, 60, 0.6)" : "rgba(45, 212, 191, 0.52)");
+  centeredPearl.addColorStop(0.48, hostility > 0.78 ? "rgba(239, 68, 68, 0.38)" : "rgba(217, 70, 239, 0.34)");
+  centeredPearl.addColorStop(0.7, hostility > 0.78 ? "rgba(250, 204, 21, 0.24)" : "rgba(251, 191, 36, 0.2)");
   centeredPearl.addColorStop(1, "rgba(0, 0, 0, 0)");
   context.fillStyle = centeredPearl;
   context.beginPath();
@@ -225,8 +228,8 @@ function drawOrb(
   context.fill();
 
   for (const particle of particles) {
-    const orbit = particle.angle + time * particle.speed;
-    const wobble = Math.sin(time * 0.9 + particle.phase) * 16 * unit;
+    const orbit = particle.angle + time * particle.speed * agitation;
+    const wobble = Math.sin(time * 0.9 * agitation + particle.phase) * (14 + hostility * 8) * unit;
     const x = centerX + Math.cos(orbit) * (particle.distance * unit + wobble);
     const y = centerY + Math.sin(orbit * 0.82) * (particle.distance * 0.48 * unit + wobble * 0.2);
     const alpha = 0.32 + Math.sin(time * 1.4 + particle.phase) * 0.18 + energy * 0.22;
