@@ -21,7 +21,7 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
 
   const { setConfig, disconnect, connected } = useLiveAPIContext();
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback((selectedCrime?: string) => {
     // Proactively resume audio context inside user gesture click
     if (typeof window !== "undefined") {
       audioContext({ id: "audio-out" }).then((ctx) => {
@@ -31,14 +31,14 @@ function GameApp({ onChangeKey }: { onChangeKey: () => void }) {
       }).catch((e) => console.warn("Failed to access AudioContext:", e));
     }
 
-    const randomCrime = CRIMES[Math.floor(Math.random() * CRIMES.length)];
+    const randomCrime = selectedCrime || CRIMES[Math.floor(Math.random() * CRIMES.length)];
     setCrime(randomCrime);
     setElapsedTime(0);
     setSuspicion(75);
     setTimerStarted(false);
 
     const gameConfig = {
-      model: "models/gemini-2.5-flash-live",
+      model: "models/gemini-2.5-flash-live-preview",
       systemInstruction: { parts: [{ text: DETECTIVE_SYSTEM_PROMPT }] },
       generationConfig: {
         responseModalities: "audio" as const,

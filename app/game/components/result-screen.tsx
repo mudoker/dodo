@@ -119,11 +119,11 @@ export function ResultScreen({
 
         {/* Title */}
         <h2 className={cn("mb-2 text-4xl font-black tracking-tight uppercase", won ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]" : "text-red-400 drop-shadow-[0_0_20px_rgba(239,68,68,0.3)]")}>
-          {won ? "Case Dismissed!" : "Verdict: Guilty!"}
+          {won ? "Case Dismissed!" : "Defeated: Guilty!"}
         </h2>
 
         <p className="mb-6 text-sm text-zinc-400">
-          {won ? "Detective Grimstone reluctantly admitted he has the wrong suspect." : "Your arguments crumbled, and you were locked up for the crime:"}
+          {won ? "Detective Grimstone reluctantly admitted he has the wrong suspect." : "Status failed. You surrendered the interrogation and accepted the guilty verdict for:"}
         </p>
 
         {/* Case Info Panel */}

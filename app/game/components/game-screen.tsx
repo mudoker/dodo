@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, MicOff, PhoneOff, RefreshCw, ShieldAlert, Wifi } from "lucide-react";
+import { Flag, Mic, MicOff, PhoneOff, RefreshCw, ShieldAlert, Wifi } from "lucide-react";
 import { LivingOrb } from "./living-orb";
 import { useInterrogationClient } from "../hooks/use-interrogation-client";
 
@@ -42,6 +42,11 @@ export function GameScreen({
           : connected
             ? "listening"
             : "offline";
+
+  const surrender = () => {
+    if (connected) disconnect();
+    onLose();
+  };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative flex h-screen w-screen flex-col justify-between bg-black p-5 font-mono text-zinc-400 select-none overflow-hidden sm:p-8">
@@ -95,7 +100,17 @@ export function GameScreen({
           )}
         </AnimatePresence>
 
-        <div className="flex items-center gap-4 bg-zinc-950/70 border border-zinc-900 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl">
+        <div className="flex flex-wrap items-center justify-center gap-3 rounded-full border border-zinc-900 bg-zinc-950/70 px-4 py-3 shadow-2xl backdrop-blur-md sm:gap-4 sm:px-6">
+          <Button
+            variant="ghost"
+            disabled={isConnecting}
+            onClick={surrender}
+            className="h-10 rounded-full border border-red-500/35 bg-red-950/20 px-4 text-[10px] font-black uppercase tracking-widest text-red-300 shadow-[0_0_18px_rgba(239,68,68,0.08)] transition-all hover:border-red-400/60 hover:bg-red-500/15 hover:text-red-100"
+          >
+            <Flag className="size-3.5" />
+            <span>Surrender</span>
+          </Button>
+
           {/* Mute button */}
           <Button
             variant="ghost"

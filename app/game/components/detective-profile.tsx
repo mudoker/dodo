@@ -69,14 +69,14 @@ export function DetectiveProfile({ mood, suspicion, isSpeaking, connected }: { m
       )}
 
       <div className="absolute top-2.5 left-3 flex items-center gap-1.5 z-20">
-        <span className={`size-1.5 rounded-full ${connected ? "bg-red-650 animate-ping" : "bg-zinc-700"}`} />
+        <span className={`size-1.5 rounded-full ${connected ? "bg-red-600 animate-ping" : "bg-zinc-700"}`} />
         <span className={`text-[8px] uppercase tracking-wider font-extrabold ${connected ? "text-red-500" : "text-zinc-600"}`}>
           {connected ? "REC FEED" : "FEED OFFLINE"}
         </span>
       </div>
 
       <div className="absolute top-2.5 right-3 z-20">
-        <span className="text-[8px] uppercase tracking-wider text-zinc-650 font-mono">CAM_01_GRIM</span>
+        <span className="text-[8px] uppercase tracking-wider text-zinc-500 font-mono">CAM_01_GRIM</span>
       </div>
 
       <div className="absolute bottom-2.5 left-3 z-20">
