@@ -296,6 +296,33 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
 		this.log("client.realtimeInput", "audioStreamEnd");
 	}
 
+	sendActivityStart() {
+		this._sendDirect({
+			realtimeInput: {
+				activityStart: {},
+			},
+		});
+		this.log("client.realtimeInput", "activityStart");
+	}
+
+	sendActivityEnd() {
+		this._sendDirect({
+			realtimeInput: {
+				activityEnd: {},
+			},
+		});
+		this.log("client.realtimeInput", "activityEnd");
+	}
+
+	sendRealtimeText(text: string) {
+		this._sendDirect({
+			realtimeInput: {
+				text,
+			},
+		});
+		this.log("client.realtimeInput", "text");
+	}
+
 	/**
 	 *  send a response to a function call and provide the id of the functions you are responding to
 	 */

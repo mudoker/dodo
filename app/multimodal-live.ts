@@ -27,7 +27,7 @@ export type LiveConfig = {
 };
 
 export type LiveGenerationConfig = GenerationConfig & {
-  responseModalities: 'text' | 'audio' | 'image';
+  responseModalities: 'text' | 'audio' | 'image' | Array<'TEXT' | 'AUDIO' | 'IMAGE'>;
   speechConfig?: {
     voiceConfig?: {
       prebuiltVoiceConfig?: {
@@ -72,6 +72,8 @@ export type RealtimeInputMessage = {
     audio?: GenerativeContentBlob;
     video?: GenerativeContentBlob;
     audioStreamEnd?: boolean;
+    activityStart?: Record<string, never>;
+    activityEnd?: Record<string, never>;
     text?: string;
   };
 };

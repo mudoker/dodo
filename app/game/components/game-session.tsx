@@ -66,7 +66,7 @@ export function GameSession({ sessionId, onChangeKey }: GameSessionProps) {
       model: restoredModel,
       systemInstruction: { parts: [{ text: DETECTIVE_SYSTEM_PROMPT }] },
       generationConfig: {
-        responseModalities: "audio" as const,
+        responseModalities: ["AUDIO"] as const,
         maxOutputTokens: 80,
         temperature: 0.7,
         speechConfig: {
@@ -75,13 +75,8 @@ export function GameSession({ sessionId, onChangeKey }: GameSessionProps) {
       },
       realtimeInputConfig: {
         automaticActivityDetection: {
-          disabled: false,
-          startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
-          endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
-          prefixPaddingMs: 120,
-          silenceDurationMs: 700,
+          disabled: true,
         },
-        activityHandling: "NO_INTERRUPTION",
         turnCoverage: "TURN_INCLUDES_ONLY_ACTIVITY",
       },
     });
